@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string-array name="scaling_mode_entryvalues">
+        <item>stretch</item>
+        <item>proportional</item>
+        <item>2x</item>
+        <item>original</item>
+    </string-array>
+    <string-array name="memsize_entryvalues">
+        <item>1</item>
+        <item>2</item>
+        <item>4</item>
+    </string-array>
+
+</resources>

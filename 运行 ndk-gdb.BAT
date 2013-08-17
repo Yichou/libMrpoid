@@ -1,0 +1,2 @@
+$ndk/ndk-gdb
+pause

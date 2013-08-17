@@ -1,0 +1,40 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@id/mi_theme"
+        android:icon="@drawable/ic_theme"
+        android:showAsAction="ifRoom"
+        android:title="@string/theme">
+        <menu>
+            <item
+                android:id="@id/mi_theme_black"
+                android:title="@string/dark"/>
+            <item
+                android:id="@id/mi_theme_light"
+                android:title="@string/light"/>
+        </menu>
+    </item>
+    <item
+        android:id="@id/mi_menu"
+        android:showAsAction="ifRoom"
+        android:icon="@drawable/ic_menu"
+        android:title="@string/menu">
+        <menu>
+            <item
+                android:id="@id/mi_refresh"
+                android:orderInCategory="100"
+                android:showAsAction="ifRoom"
+                android:title="@string/refresh"/>
+            <item
+                android:id="@id/mi_pref"
+                android:orderInCategory="100"
+                android:showAsAction="ifRoom"
+                android:title="@string/settings"/>
+            <item
+                android:id="@id/mi_help"
+                android:orderInCategory="100"
+                android:title="@string/help"/>
+        </menu>
+    </item>
+
+</menu>
