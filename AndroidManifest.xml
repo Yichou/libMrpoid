@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mrpoid"
-    android:versionCode="1436"
-    android:versionName="1.4 20130416" >
+    android:versionCode="1826"
+    android:versionName="1.8.0726" >
 
     <uses-sdk
         android:minSdkVersion="17"
