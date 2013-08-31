@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="emu_theme_light" parent="android:Theme.Light" />
+
+    <style name="emu_theme_light_notitle" parent="android:Theme.Light.NoTitleBar" />
+
+    <style name="emu_theme_black" parent="android:Theme.Black" />
+
+    <style name="emu_theme_black_notitle" parent="android:Theme.Black.NoTitleBar" />
+
+    <style name="emu_theme_wallpaper_notitle" parent="android:Theme.Wallpaper.NoTitleBar" />
+</resources>

@@ -134,6 +134,8 @@ extern char					dsmSmsCenter[MAX_SMS_CENTER_LEN+1];
 ///////// 注册方法 J->N /////////////////////////////////////////
 void native_create(JNIEnv *env, jobject self,
 		jobject mrpScreen, jobject emuAudio);
+void native_pause(JNIEnv *env, jobject self);
+void native_resume(JNIEnv *env, jobject self);
 void native_destroy(JNIEnv * env, jobject self);
 void native_setIntOptions(JNIEnv * env, jobject self, jstring key, jint value);
 jstring native_getStringOptions(JNIEnv * env, jobject self, jstring key);

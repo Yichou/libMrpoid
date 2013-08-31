@@ -31,7 +31,7 @@ int					showApiLog = TRUE;
 
 //---------------------------------
 static int   g_bAttatedT = 0;
-
+static		m_bSuspendDraw;
 
 static jfieldID		fid_charW, fid_charH, fid_editInputContent;
 static jfieldID		fid_memLen, fid_memTop, fid_memLeft;
@@ -186,6 +186,21 @@ void native_create(JNIEnv *env, jobject self, jobject mrpScreen, jobject emuAudi
 
 	//初始化 DSM启动时间
 	gettimeofday(&gEmulatorParams.dsmStartTime, NULL);
+}
+
+void native_pause(JNIEnv *env, jobject self)
+{
+	m_bSuspendDraw = 1;
+	LOGD("native pause!");
+}
+
+void native_resume(JNIEnv *env, jobject self)
+{
+	LOGD("native resume!");
+	m_bSuspendDraw = 0;
+
+	if(gEmulatorCfg.b_vm_running)
+		emu_bitmapToscreen(cacheScreenBuffer, 0, 0, screenW, screenH);
 }
 
 void native_destroy(JNIEnv * env, jobject self)
@@ -487,6 +502,9 @@ void native_mrpScreen_unLockBitmap(JNIEnv * env, jobject self)
 
 void emu_bitmapToscreen(uint16* data, int x, int y, int w, int h)
 {
+	if(m_bSuspendDraw)
+		return;
+
 	int ret;
 	int				x1, y1, r, b;
 	int32			sw=SCNW, sh=SCNH;

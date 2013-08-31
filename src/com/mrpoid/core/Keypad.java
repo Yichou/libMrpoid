@@ -6,12 +6,14 @@ import java.io.InputStream;
 
 import org.xmlpull.v1.XmlPullParser;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.os.Vibrator;
 import android.util.TypedValue;
 import android.util.Xml;
 import android.view.MotionEvent;
@@ -106,6 +108,7 @@ public class Keypad extends Director implements ClickCallback {
 	private FloatMenuButton floatMenuBtn;
 	private ActorGroup rootGroup;
 	private int mode;
+	private Vibrator vibrator;
 	
 	
 	private Keypad() {
@@ -149,9 +152,9 @@ public class Keypad extends Director implements ClickCallback {
 	}
 	
 	public static File getXml(boolean isLandscape, int mode) {
-		return EmuPath.getPublicFilePath(isLandscape ? 
-				String.format("keypad_land_%d.xml", mode) 
-				: String.format("keypad_%d.xml", mode));
+//		return EmuPath.getPublicFilePath(isLandscape ? 
+		return EmuStatics.getAppContext().getFileStreamPath(isLandscape ? 
+				String.format("keypad_land_%d.xml", mode) : String.format("keypad_%d.xml", mode));
 	}
 	
 	public void readFromXml(boolean landscape) throws Exception {
@@ -294,6 +297,8 @@ public class Keypad extends Director implements ClickCallback {
 		if(defKeyLayouter == null)
 			defKeyLayouter = new DefKeyLayouter(view.getResources());
 		setLayouter(defKeyLayouter);
+		
+		vibrator = (Vibrator)view.getContext().getSystemService(Context.VIBRATOR_SERVICE);
 	}
 	
 	@Override
@@ -314,6 +319,9 @@ public class Keypad extends Director implements ClickCallback {
 			if(!down)
 				EmuStatics.emulatorActivity.openOptionsMenu();
 		}else {
+			if(Prefer.enableKeyVirb)
+				vibrator.vibrate(40);
+			
 			Emulator.getInstance().postMrpEvent(down? MrDefines.MR_KEY_PRESS : MrDefines.MR_KEY_RELEASE,
 					key, 
 					0);

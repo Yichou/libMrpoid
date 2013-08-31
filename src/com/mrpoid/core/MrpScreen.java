@@ -105,8 +105,10 @@ public class MrpScreen {
 		tmpBuf[1] = 0;
 		paint.setColor(color);
 		
-		paint.getTextBounds(tmpBuf, 0, 1, textRect);
+		//顶、左 对齐 +charH-2
+		cacheCanvas.drawText(tmpBuf, 0,1, x, y+CHR_H-2, paint);
 		
+		paint.getTextBounds(tmpBuf, 0, 1, textRect);
 //		if(lastY != y){ //新的一行
 //			lastY = y;
 //			buttom = y;
@@ -121,7 +123,7 @@ public class MrpScreen {
 //		}
 		
 		//顶、左 对齐 +charH-2
-		cacheCanvas.drawText(tmpBuf, 0,1, x+textRect.left, tmp, paint);
+//		cacheCanvas.drawText(tmpBuf, 0,1, x+textRect.left, tmp, paint);
 	}
 	
 	public void N2J_measureChar(short ch) {
@@ -204,18 +206,21 @@ public class MrpScreen {
 		}
 		
 		size.set(w, h);
-		
+		createBitmap();
+	}
+	
+	private void createBitmap() {
 		//重新创建屏幕位图
 		if(bitmap != null)
 			bitmap.recycle();
 		if(cacheBitmap != null)
 			cacheBitmap.recycle();
-	
-		cacheBitmap = Bitmap.createBitmap(w, h, Config.RGB_565);
-		bitmap = Bitmap.createBitmap(w, h, Config.RGB_565);
+		
+		cacheBitmap = Bitmap.createBitmap(size.x, size.y, Config.RGB_565);
+		bitmap = Bitmap.createBitmap(size.x, size.y, Config.RGB_565);
 		cacheCanvas.setBitmap(cacheBitmap);
 		
-		native_reset(cacheBitmap, bitmap, w, h);
+		native_reset(cacheBitmap, bitmap, size.x, size.y);
 	}
 	
 	public void setPosition(int x, int y) {
@@ -247,6 +252,23 @@ public class MrpScreen {
 //		if(Prefer.keypadMode == 0 && region.height() < viewH){
 //			region.offset(0, (viewH-region.height())/2);
 //		}
+	}
+	
+	public void pause() {
+		
+	}
+	
+	public void resume() {
+		if(emulator.isRunning()){
+			if(cacheBitmap == null || cacheBitmap.isRecycled()){ //无效了，重启mrp
+				
+			}
+			
+			if(bitmap == null || bitmap.isRecycled()){
+				bitmap = Bitmap.createBitmap(size.x, size.y, Config.RGB_565);
+				native_reset(cacheBitmap, bitmap, size.x, size.y);
+			}
+		}
 	}
 	
 	public void draw(Canvas canvas) {

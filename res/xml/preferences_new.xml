@@ -2,6 +2,11 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:androidemu="http://androidemu.com/apk/res/android" >
 
+    <Preference
+        android:key="setupWizard"
+        android:summary="@string/setup_wizard_sum"
+        android:title="@string/setup_wizard" />
+
     <PreferenceCategory android:title="@string/usefull_set" >
         <ListPreference
             android:defaultValue="@string/def_screensize"
@@ -82,6 +87,10 @@
                 android:key="noKey"
                 android:summary="@string/no_key_sum"
                 android:title="@string/no_key" />
+            <CheckBoxPreference
+                android:defaultValue="true"
+                android:key="enableKeyVirb"
+                android:title="@string/enable_touch_virb" />
 
             <Preference
                 android:key="keypadLayout"
@@ -90,6 +99,7 @@
         <PreferenceScreen
             android:key="advanced"
             android:title="@string/other_settings" >
+            
             <PreferenceCategory android:title="@string/screensize" >
                 <CheckBoxPreference
                     android:defaultValue="true"

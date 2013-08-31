@@ -108,6 +108,11 @@
     <string name="run_under_multi_path_sum">选择不同分辨率时在不同路径下运行，避免不全屏问题。</string>
     <string name="show_float_button">显示浮动按钮</string>
     <string name="float_button_func">浮动按钮功能</string>
+    <string name="key_sprite">按键精灵</string>
+    <string name="enable_touch_virb">按键震动</string>
+    <string name="setup_wizard">设置向导</string>
+    <string name="setup_wizard_sum">在不清楚每个设置干嘛前，先阅读设置向导！</string>
+    <string name="setup_wizard_uri">http://mrpej.com</string>
 
     <string-array name="float_button_func_entries">
         <item>菜单</item>

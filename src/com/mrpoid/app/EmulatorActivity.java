@@ -54,6 +54,7 @@ import com.mrpoid.core.MrDefines;
 import com.mrpoid.core.MrpFile;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
+import com.yichou.common.InternalID;
 import com.yichou.sdk.SdkUtils;
 
 /**
@@ -132,6 +133,8 @@ public class EmulatorActivity extends Activity implements
 
 		//短信模块初始化
 		smsInit();
+		
+		EmuStatics.setAppContext(getApplicationContext());
 	}
 	
 	@Override
@@ -514,6 +517,8 @@ public class EmulatorActivity extends Activity implements
 			super.onPrepareDialog(id, dialog);
 		}
 	}
+	
+	
 
 	@Override
 	public boolean onCreateOptionsMenu(android.view.Menu menu) { ////只会在第一次弹出的时候调用
@@ -545,30 +550,30 @@ public class EmulatorActivity extends Activity implements
 	private void backNotification2() {
 		// 建立新的Intent
 		Intent notifyIntent = new Intent(this, EmulatorActivity.class);
-		notifyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+		notifyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 		
 		// 建立PendingIntent作为设定递延执行的Activity
 		PendingIntent appIntent = PendingIntent.getActivity(EmulatorActivity.this, 0, notifyIntent, 0);
 		
 		// 建立Notification，并设定相关参数
-		Notification myNoti = new Notification();
-		// 设置状态栏显示的图标
-		myNoti.icon = R.drawable.ic_notify;
-		// 设定状态栏显示的文字信息
-		myNoti.tickerText = getString(R.string.hint_click_to_back);
-		// 发出预设的身影
-		myNoti.defaults = Notification.DEFAULT_LIGHTS;
-		myNoti.flags = Notification.FLAG_ONGOING_EVENT; //不可清楚
-		// 设置通知消息
-		myNoti.setLatestEventInfo(EmulatorActivity.this, 
+		Notification n = new Notification(R.drawable.ic_notify_small, null, System.currentTimeMillis());
+		n.setLatestEventInfo(this, 
 				emulator.getCurMrpFile().getAppName(), 
 				getString(R.string.hint_click_to_back), 
 				appIntent);
-		// 发送出消息
+		
+		if(n.contentView != null){
+			n.contentView.setImageViewResource(InternalID.id_icon, R.drawable.ic_notify);
+		}
+		
+		n.defaults = Notification.DEFAULT_LIGHTS;
+		n.flags = Notification.FLAG_ONGOING_EVENT; //不可清楚
+		
 		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		manager.notify(1001, myNoti);
+		manager.notify(1001, n);
 		
 		isNotificationShow = true;
+		
 		SdkUtils.event(this, "backrun", EmuUtils.getTimeNow());
 	}
 	

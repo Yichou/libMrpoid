@@ -23,6 +23,8 @@ static const char *s_class_path_name = "com/mrpoid/core/Emulator";
 
 static JNINativeMethod s_methods[] = {
 	{"native_create", "(Lcom/mrpoid/core/MrpScreen;Lcom/mrpoid/core/EmuAudio;)V", (void*) native_create},
+	{"native_pause", "()V", (void*) native_pause},
+	{"native_resume", "()V", (void*) native_resume},
 	{"native_destroy", "()V", (void*) native_destroy},
 
 	{"native_setIntOptions", "(Ljava/lang/String;I)V", (void*) native_setIntOptions},

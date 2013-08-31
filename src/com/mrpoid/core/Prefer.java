@@ -131,6 +131,7 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		autoUpdate = sp.getBoolean(KEY_AUTO_UPDATE, true);
 		showFloatButton = sp.getBoolean("showFloatButton", false);
 		limitInputLength = sp.getBoolean("showFloatButton", false);
+		enableKeyVirb = sp.getBoolean(KEY_ENABLE_KEY_VIRB, true);
 		
 		Emulator emulator = Emulator.getInstance();
 		
@@ -249,7 +250,9 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			limitInputLength = sp.getBoolean(KEY_LIMIT_INPUT_LENGTH, false);
 		} else if (key.equals(KEY_EXRAM)) {
 			emulator.native_setIntOptions(KEY_EXRAM, sp.getBoolean(key, false) ? 1 : 0);
-		} else {
+		} else if (key.equals(KEY_ENABLE_KEY_VIRB)) {
+			enableKeyVirb = sp.getBoolean(KEY_ENABLE_KEY_VIRB, true);
+		}else {
 			//应该全部改为使用 native_setStringOptions() 这样可以避免转型失败
 			emulator.native_setIntOptions(key, sp.getBoolean(key, true) ? 1 : 0);
 		}
@@ -264,6 +267,7 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 	}
 	
 	///////////////////////////////////////////////////////
+	public static boolean enableKeyVirb = true;
 	public static boolean fullScnEditor = false;
 	public static boolean catchVolumekey = false;
 	public static boolean dpadAtLeft = false;
@@ -320,6 +324,7 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 	
 	public static final String KEY_MYTHROAD_PATH = "mythroadPath";
 	public static final String KEY_SDCARD_PATH = "sdpath";
+	public static final String KEY_ENABLE_KEY_VIRB = "enableKeyVirb";
 	public static final String KEY_MEM_SIZE= "memSize";
 	public static final String KEY_EXRAM= "enableExram";
 	public static final String KEY_SCALING_MODE= "scalingMode";

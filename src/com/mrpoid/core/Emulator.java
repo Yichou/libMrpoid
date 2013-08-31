@@ -334,10 +334,14 @@ public class Emulator implements Callback {
 	public void pause() {
 		state = STA_PAUSE;
 		audio.pause();
+		screen.pause();
+		native_pause();
 	}
 	
 	public void resume() {
 		audio.resume();
+		screen.resume();
+		native_resume();
 	}
 	
 	/**
@@ -690,6 +694,8 @@ public class Emulator implements Callback {
 
 	/// ////////////////////////////////////////
 	public native void native_create(MrpScreen mrpScreen, EmuAudio emuAudio);
+	public native void native_pause();
+	public native void native_resume();
 	public native void native_destroy();
 	public native void native_getMemoryInfo();
 	public native String native_getStringOptions(String key);

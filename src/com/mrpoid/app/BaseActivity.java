@@ -9,6 +9,7 @@ import com.mrpoid.core.Prefer;
 import com.mrpoid.core.Res;
 import com.yichou.sdk.CheckUpdateCallback;
 import com.yichou.sdk.DownloadCallback;
+import com.yichou.sdk.SdkInterface;
 import com.yichou.sdk.SdkUtils;
 
 /**
@@ -17,7 +18,7 @@ import com.yichou.sdk.SdkUtils;
  * @author Yichou
  *
  */
-public class BaseActivity extends Activity { //implements 
+public abstract class BaseActivity extends Activity { //implements 
 	protected Emulator emulator;
 
 	@Override
@@ -38,6 +39,7 @@ public class BaseActivity extends Activity { //implements
 		Res.load(this);
 		
 		//错误报告
+		SdkUtils.setRealImpl(fetchSdk());
 		SdkUtils.enableCrashHandle(this, true);
 		SdkUtils.updateOnlineParams(this);
 		SdkUtils.setUpdateCfg(false, false);
@@ -54,15 +56,16 @@ public class BaseActivity extends Activity { //implements
 					break;
 					
 				case CheckUpdateCallback.RET_NO_WIFI: // none wifi
-					Toast.makeText(getActivity(), "没有wifi连接， 只在wifi下更新", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getActivity(), "你没有连接wifi哦", Toast.LENGTH_SHORT).show();
 					break;
 					
 				case CheckUpdateCallback.RET_FAILUE: // time out
-					Toast.makeText(getActivity(), "检测超时，请重试！", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getActivity(), "网络好像不给力哟", Toast.LENGTH_SHORT).show();
 					break;
 				}
 			}
 		});
+		
 		SdkUtils.setDownloadCallback(new DownloadCallback() {
 			@Override
 			public void OnDownloadRet(int ret) {
@@ -99,4 +102,6 @@ public class BaseActivity extends Activity { //implements
 
 		super.onDestroy();
 	}
+	
+	protected abstract SdkInterface fetchSdk() ;
 }

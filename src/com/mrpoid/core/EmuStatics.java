@@ -1,5 +1,7 @@
 package com.mrpoid.core;
 
+import android.content.Context;
+
 import com.mrpoid.app.EmulatorActivity;
 
 /**
@@ -11,6 +13,16 @@ import com.mrpoid.app.EmulatorActivity;
 public final class EmuStatics {
 	public static EmulatorActivity emulatorActivity;
 	public static EmulatorView emulatorView;
+	public static Context appContext;
+	
+	
+	public static Context getAppContext() {
+		return appContext;
+	}
+	
+	public static void setAppContext(Context appContext) {
+		EmuStatics.appContext = appContext;
+	}
 	
 	public static EmulatorActivity getEmulatorActivity() {
 		return emulatorActivity;

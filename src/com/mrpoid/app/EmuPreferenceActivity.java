@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
@@ -65,6 +66,12 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 		}
 		
 		emuPath = EmuPath.getInstance();
+		
+		
+		Intent intent = new Intent(this, HelpActivity.class);
+		intent.setData(Uri.parse(getString(R.string.setup_wizard_uri)));
+		findPreference("setupWizard").setIntent(intent);
+		
 		
 		lpScnSize = (ListPreference) findPreference(Prefer.KEY_SCN_SIZE);
 		lpScnSize.setValue(MrpScreen.getSizeTag());
