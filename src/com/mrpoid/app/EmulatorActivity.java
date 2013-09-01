@@ -23,6 +23,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
 import android.telephony.SmsManager;
 import android.text.InputFilter;
 import android.view.Gravity;
@@ -54,6 +56,7 @@ import com.mrpoid.core.MrDefines;
 import com.mrpoid.core.MrpFile;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
+import com.mrpoid.keysprite.ChooserFragment;
 import com.yichou.common.InternalID;
 import com.yichou.sdk.SdkUtils;
 
@@ -64,7 +67,7 @@ import com.yichou.sdk.SdkUtils;
  * 
  * 最后修改：2013-3-14 20:06:44
  */
-public class EmulatorActivity extends Activity implements 
+public class EmulatorActivity extends FragmentActivity implements 
 		Handler.Callback, 
 		OnClickListener{
 	static final String TAG = "EmulatorActivity";
@@ -79,7 +82,10 @@ public class EmulatorActivity extends Activity implements
 	
 	static final int DLG_EDIT = 1001, 
 		DLG_SCALE_MODE = 1002,
-		DLG_PAD_ALPHA = 1003;
+		DLG_PAD_ALPHA = 1003,
+		DLG_TOOLS = 1004,
+		
+		DLG_LAST = 1103;
 	
 	
 	private TextView tvMemory;
@@ -360,7 +366,34 @@ public class EmulatorActivity extends Activity implements
 			showDialog(DLG_PAD_ALPHA);
 		} else if (item.getItemId() == R.id.mi_float_view) {
 			floatView();
+		} else if (item.getItemId() == R.id.mi_tools) {
+			showDialog(DLG_TOOLS);
 		}
+		
+		return true;
+	}
+	
+	@Override
+	public boolean onCreateOptionsMenu(android.view.Menu menu) { ////只会在第一次弹出的时候调用
+		if(!Prefer.showMenu)
+			return false;
+		
+		int i = 0;
+		menu.add(0, R.id.mi_close, i++, R.string.close);
+		menu.add(0, R.id.mi_foce_close, i++, R.string.foce_close);
+		menu.add(0, R.id.mi_scnshot, i++, R.string.scnshot);
+		menu.add(0, R.id.mi_switch_keypad, i++, R.string.switch_keypad);
+		menu.add(0, R.id.mi_keypad_opacity, i++, R.string.pad_opacity);
+//		menu.add(0, R.id.mi_float_view, i++, R.string.float_view);
+		
+//		SubMenu subMenu = menu.addSubMenu(0, R.id.mi_set_background, i++, R.string.set_background);
+//		int j = 0;
+//		subMenu.add(0, R.id.mi_color, j++, R.string.color);
+//		subMenu.add(0, R.id.mi_image, j++, R.string.image);
+		
+		menu.add(0, R.id.mi_scale_mode, i++, R.string.scaling_mode);
+
+		menu.add(0, R.id.mi_tools, i++, R.string.tools);
 		
 		return true;
 	}
@@ -439,7 +472,7 @@ public class EmulatorActivity extends Activity implements
 	            })
 	            .setNegativeButton(R.string.cancel, null)
 	           .create();
-		}else if (id == DLG_PAD_ALPHA) {
+		} else if (id == DLG_PAD_ALPHA) {
 			SeekBar bar = new SeekBar(this);
 			bar.setMax(255);
 			bar.setProgress(Keypad.getInstance().getOpacity());
@@ -470,6 +503,18 @@ public class EmulatorActivity extends Activity implements
 				.setTitle(R.string.pad_opacity)
 				.setView(bar)
 				.setPositiveButton(R.string.ok, null)
+				.create();
+		} else if (id == DLG_TOOLS) {
+			
+			return new AlertDialog.Builder(this)
+				.setTitle(R.string.tools)
+				.setItems(TOOLS, new DialogInterface.OnClickListener() {
+					
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						runTool(which);
+					}
+				})
 				.create();
 		}
 		
@@ -518,29 +563,21 @@ public class EmulatorActivity extends Activity implements
 		}
 	}
 	
+	void showFragmentDialog(DialogFragment fragment) {
+        fragment.show(getSupportFragmentManager(), "dialog");
+    }
 	
-
-	@Override
-	public boolean onCreateOptionsMenu(android.view.Menu menu) { ////只会在第一次弹出的时候调用
-		if(!Prefer.showMenu)
-			return false;
-		
-		int i = 0;
-		menu.add(0, R.id.mi_close, i++, R.string.close);
-		menu.add(0, R.id.mi_foce_close, i++, R.string.foce_close);
-		menu.add(0, R.id.mi_scnshot, i++, R.string.scnshot);
-		menu.add(0, R.id.mi_switch_keypad, i++, R.string.switch_keypad);
-		menu.add(0, R.id.mi_keypad_opacity, i++, R.string.pad_opacity);
-//		menu.add(0, R.id.mi_float_view, i++, R.string.float_view);
-		
-//		SubMenu subMenu = menu.addSubMenu(0, R.id.mi_set_background, i++, R.string.set_background);
-//		int j = 0;
-//		subMenu.add(0, R.id.mi_color, j++, R.string.color);
-//		subMenu.add(0, R.id.mi_image, j++, R.string.image);
-		
-		menu.add(0, R.id.mi_scale_mode, i++, R.string.scaling_mode);
-		
-		return true;
+	private static final String[] TOOLS = new String[]{
+		"按键精灵"
+	};
+	
+	private void runTool(int index) {
+		switch (index) {
+		case 0: {
+			showFragmentDialog(new ChooserFragment());
+			break;
+		}
+		}
 	}
 	
 	private boolean isNotificationShow = false;

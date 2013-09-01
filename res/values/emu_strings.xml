@@ -110,6 +110,9 @@
     <string name="float_button_func">浮动按钮功能</string>
     <string name="key_sprite">按键精灵</string>
     <string name="enable_touch_virb">按键震动</string>
+    <string name="tools">工具箱</string>
+    <string name="create">创建</string>
+    <string name="choose_one">请选择一个</string>
     <string name="setup_wizard">设置向导</string>
     <string name="setup_wizard_sum">在不清楚每个设置干嘛前，先阅读设置向导！</string>
     <string name="setup_wizard_uri">http://mrpej.com</string>

@@ -41,4 +41,5 @@
     <item type="id" name="mi_theme_black"></item>
     <item type="id" name="mi_theme_light"></item>
     <item type="id" name="mi_key_sprite"></item>
+    <item type="id" name="mi_tools"></item>
 </resources>

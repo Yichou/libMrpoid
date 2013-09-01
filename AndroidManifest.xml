@@ -71,6 +71,11 @@
             android:label="@string/settings"
             android:theme="@style/emu_theme_light" >
         </activity>
+        <activity
+            android:name="com.mrpoid.keysprite.KeySpriteEditorActivity"
+            android:label="@string/settings"
+            android:theme="@style/emu_theme_light" >
+        </activity>
         
         <activity
             android:multiprocess="true"
