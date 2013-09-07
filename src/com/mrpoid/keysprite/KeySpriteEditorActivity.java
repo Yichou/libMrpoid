@@ -25,6 +25,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mrpoid.R;
+import com.mrpoid.core.EmuPath;
+import com.yichou.common.FileUtils;
 
 
 /**
@@ -79,6 +81,7 @@ public class KeySpriteEditorActivity extends Activity implements OnItemSelectedL
 		return true;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		if (item.getItemId() == 1) {
@@ -90,6 +93,19 @@ public class KeySpriteEditorActivity extends Activity implements OnItemSelectedL
 		}
 
 		return true;
+	}
+	
+	private void save(String name) {
+		File dir = EmuPath.getPublicFilePath("keySprites");
+		FileUtils.createDir(dir);
+		
+		File file = new File(dir, name + ".xml");
+		try {
+			mKeySprite.toXml(file);
+			Toast.makeText(getActivity(), "保存成功！", Toast.LENGTH_SHORT).show();
+		} catch (Exception e) {
+			Toast.makeText(getActivity(), "保存失败！", Toast.LENGTH_SHORT).show();
+		}
 	}
 
 	@SuppressWarnings("deprecation")
@@ -111,14 +127,7 @@ public class KeySpriteEditorActivity extends Activity implements OnItemSelectedL
 					if (name.length() == 0)
 						name = String.valueOf(System.currentTimeMillis());
 
-					File dir = getActivity().getDir("keySprites", 0);
-					File file = new File(dir, name + ".xml");
-					try {
-						mKeySprite.toXml(file);
-						Toast.makeText(getActivity(), "保存成功！", Toast.LENGTH_SHORT).show();
-					} catch (Exception e) {
-						Toast.makeText(getActivity(), "保存失败！", Toast.LENGTH_SHORT).show();
-					}
+					save(name);
 				}
 			}).setNegativeButton("取消", null).create();
 

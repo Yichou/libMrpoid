@@ -19,21 +19,10 @@ import com.yichou.sdk.SdkUtils;
  *
  */
 public abstract class BaseActivity extends Activity { //implements 
-	protected Emulator emulator;
-
+	
 	@Override
 	protected void onCreate(Bundle arg0) {
 		super.onCreate(arg0);
-
-		emulator = Emulator.getInstance(this);
-		if (emulator == null) {
-			Toast.makeText(this, "Emulator fial !", Toast.LENGTH_SHORT).show();
-			finish();
-			return;
-		}
-
-		// 一定要在模拟器初始化之后
-		Prefer.getInstance().init(this);
 
 		// 加载资源
 		Res.load(this);

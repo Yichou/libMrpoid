@@ -11,8 +11,10 @@ import org.xmlpull.v1.XmlSerializer;
 
 import android.util.Xml;
 
-public class SampleKeySprite implements KeySprite {
+public class SampleKeySprite implements KeySprite, Runnable {
 	private ArrayList<Sprite> spriteList;
+	private KeyEventListener mListener;
+	private boolean b_stoped = false;
 	
 	
 	public SampleKeySprite() {
@@ -31,8 +33,43 @@ public class SampleKeySprite implements KeySprite {
 		spriteList.remove(index);
 	}
 	
-	public void run(int repeatTimes) {
+	public void run(KeyEventListener l) {
+		if(l == null)
+			throw new NullPointerException("KeyEventListener must be not null!");
 		
+		if(spriteList.size() == 0)
+			return;
+		
+		this.mListener = l;
+		this.b_stoped = false;
+		
+		new Thread(this).start();
+	}
+	
+	@Override
+	public void run() {
+		int count = spriteList.size();
+		
+		do {
+			for (int i = 0; !b_stoped && i < count; i++) {
+				Sprite sprite = spriteList.get(i);
+				
+				mListener.onKeyDown(sprite.value, sprite);
+				
+				try {
+					Thread.sleep(sprite.time);
+				} catch (InterruptedException e) {
+					break;
+				}
+				
+				mListener.onKeyUp(sprite.value, sprite);
+			}
+		} while (!b_stoped);
+	}
+	
+	@Override
+	public void stop() {
+		b_stoped = true;
 	}
 	
 	public void toXml(File file) throws Exception{
@@ -64,7 +101,7 @@ public class SampleKeySprite implements KeySprite {
 		InputStream is = new FileInputStream(file);
 
 		if (is.available() <= 0)
-			throw new RuntimeException("save file is invalid!");
+			throw new RuntimeException("xml file is invalid!");
 
 		XmlPullParser parser = Xml.newPullParser();
 		parser.setInput(is, "UTF-8"); // 为Pull解释器设置要解析的XML数据

@@ -379,7 +379,6 @@ void mainLoop()
 			break;
 
 		case VMMSG_ID_GETHOST:
-			LOGI("getHost callback ip:%#p", body->p0);
 			((MR_GET_HOST_CB)mr_soc.callBack)(body->p0);
 			break;
 

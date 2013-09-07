@@ -4,13 +4,11 @@ import java.io.File;
 import java.util.List;
 import java.util.Stack;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.View;
 import android.view.Window;
 import android.widget.AdapterView;
@@ -25,7 +23,7 @@ import android.widget.TextView;
 import com.mrpoid.R;
 import com.mrpoid.ui.ListViewPathAdapter.OnPathOperateListener;
 import com.yichou.common.FileUtils;
-import com.yichou.common.UIHelper;
+import com.yichou.common.UIUtils;
 
 /**
  * 路径选择弹窗
@@ -65,11 +63,11 @@ public class PathChooseDialog extends Dialog implements android.view.View.OnClic
 				if (rs == 0) {
 					data.remove(position);
 					refleshListView(data, firstIndex);
-					UIHelper.ToastMessage(ctx, "删除成功");
+					UIUtils.ToastMessage(ctx, "删除成功");
 				} else if (rs == 1) {
-					UIHelper.ToastMessage(ctx, "没有权限");
+					UIUtils.ToastMessage(ctx, "没有权限");
 				} else if (rs == 2) {
-					UIHelper.ToastMessage(ctx, "不能删除非空目录");
+					UIUtils.ToastMessage(ctx, "不能删除非空目录");
 				}
 
 			} else if (type == OnPathOperateListener.RENAME) {
@@ -85,16 +83,16 @@ public class PathChooseDialog extends Dialog implements android.view.View.OnClic
 					public void onClick(DialogInterface dialog, int which) {
 						String input = et.getText().toString();
 						if (input != null || input.length() == 0) {
-							UIHelper.ToastMessage(ctx, "输入不能为空");
+							UIUtils.ToastMessage(ctx, "输入不能为空");
 						} else {
 							String newPath = pathStack.peek() + File.separator + input;
 							boolean rs = FileUtils.reNamePath(data.get(position), newPath);
 							if (rs == true) {
 								pathName.setText(input);
 								data.set(position, newPath);
-								UIHelper.ToastMessage(ctx, "重命名成功");
+								UIUtils.ToastMessage(ctx, "重命名成功");
 							} else {
-								UIHelper.ToastMessage(ctx, "重命名失败");
+								UIUtils.ToastMessage(ctx, "重命名失败");
 							}
 						}
 						dialog.dismiss();
@@ -233,7 +231,7 @@ public class PathChooseDialog extends Dialog implements android.view.View.OnClic
 				public void onClick(DialogInterface dialog, int which) {
 					String rs = et.getText().toString();
 					if (rs == null || rs.length() == 0) {
-						UIHelper.ToastMessage(ctx, "输入不能为空");
+						UIUtils.ToastMessage(ctx, "输入不能为空");
 					} else {
 						String newPath = pathStack.peek() + File.separator + rs;
 						int ret = FileUtils.createDir(newPath);
@@ -241,10 +239,10 @@ public class PathChooseDialog extends Dialog implements android.view.View.OnClic
 						case FileUtils.SUCCESS:
 							data.add(newPath);
 							refleshListView(data, data.size() - 1);
-							UIHelper.ToastMessage(ctx, "创建成功");
+							UIUtils.ToastMessage(ctx, "创建成功");
 							break;
 						case FileUtils.FAILED:
-							UIHelper.ToastMessage(ctx, "创建失败");
+							UIUtils.ToastMessage(ctx, "创建失败");
 							break;
 						}
 					}

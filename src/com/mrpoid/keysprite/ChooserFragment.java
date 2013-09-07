@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 
 import com.mrpoid.R;
+import com.mrpoid.core.EmuPath;
 
 /**
  * 按键精灵选择界面
@@ -18,20 +19,27 @@ import com.mrpoid.R;
  *
  */
 public class ChooserFragment extends DialogFragment {
+	private OnChooseLitener mLitener;
+	
 	
 	private void loadAndRun(File file) {
 		KeySprite keySprite = new SampleKeySprite();
 		try {
 			keySprite.fromXml(file);
-			// ...
-			keySprite.run(-1);
+			if(mLitener != null)
+				mLitener.onChoose(keySprite);
 		} catch (Exception e) {
 		}
 	}
 	
+	public ChooserFragment setOnChooseLitener(OnChooseLitener l) {
+		this.mLitener = l;
+		return this;
+	}
+	
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
-		final File dir = getActivity().getDir("keySprites", 0);
+		final File dir = EmuPath.getPublicFilePath("keySprites");
 		final String[] files = dir.list();
 
 		return new AlertDialog.Builder(getActivity())
@@ -48,6 +56,14 @@ public class ChooserFragment extends DialogFragment {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					startActivity(new Intent(getActivity(), KeySpriteEditorActivity.class));
+				}
+			})
+			.setOnCancelListener(new DialogInterface.OnCancelListener() {
+				
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					if(mLitener != null)
+						mLitener.onCancel();
 				}
 			})
 			.create();

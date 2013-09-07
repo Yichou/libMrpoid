@@ -8,6 +8,10 @@
 #include <fcntl.h>
 #include <asm-generic/fcntl.h>
 #include <stdio.h>
+#include <setjmp.h>
+#include <signal.h>
+//#include <stdlib.h>
+
 
 #define USE_JBITMAP
 
@@ -150,16 +154,38 @@ static void initJniId(JNIEnv * env, jobject self)
 
 	(*env)->DeleteLocalRef(env, cls);
 }
-
 static void freeJniId()
 {
 
+}
+
+//--------------------------------------------------------
+static sigjmp_buf jbuf;
+
+void sig_maperr(int signo)
+{
+	LOGE("error ocured %d!\n", signo);
+	exit(0);
+//	siglongjmp(jbuf, 1);
+
+//	siginterrupt(signo, 1);
 }
 
 //初始化模拟器  唯一实例
 void native_create(JNIEnv *env, jobject self, jobject mrpScreen, jobject emuAudio)
 {
 	LOGI("native_create");
+
+	signal(SIGSEGV, sig_maperr);
+//	signal(SIGILL, sig_maperr);
+
+	if(sigsetjmp(jbuf, 1) == 0)
+	{
+		LOGI("set jump point suc!");
+	} else {
+		LOGE("Ouch! I crashed! Fatal Error returned by longjmp!");
+		return;
+	}
 
 	jniEnv = env;
 
@@ -239,7 +265,7 @@ void native_callback(JNIEnv * env, jobject self, int what, int param)
 		break;
 
 	case CALLBACK_GETHOSTBYNAME:
-		LOGI("getHost callback ip:%#p", param);
+		LOGI("getHost callback ip:%p", (void *)param);
 		((MR_GET_HOST_CB)mr_soc.callBack)(param);
 		break;
 
@@ -752,7 +778,7 @@ void emu_requestCallback(int what, int param)
 			(*env)->CallVoidMethod(env, obj_emulator, id_requestCallback, what, param);
 			(*gs_JavaVM)->DetachCurrentThread(gs_JavaVM);
 
-			LOGI(" suc.", what, param);
+			LOGI(" suc. %d, %d", what, param);
 		}
 	}
 }
@@ -818,7 +844,7 @@ void N2J_readTsfFont(uint8 **outbuf, int32 *outlen)
 			buf = malloc(len);
 			(*jniEnv)->GetByteArrayRegion(jniEnv, jba, 0, len, buf);
 
-			LOGD("read tsf from assets SUC!", buf, len);
+			LOGD("read tsf from assets SUC!");
 		}
 
 		(*jniEnv)->DeleteLocalRef(jniEnv, jba);

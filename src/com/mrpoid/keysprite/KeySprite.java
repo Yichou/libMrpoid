@@ -19,7 +19,12 @@ public interface KeySprite {
 	 * 
 	 * @param repeatTimes 重复次数，-1 永久重复
 	 */
-	public void run(int repeatTimes) ;
+	public void run(KeyEventListener l);
+	
+	/**
+	 * 停止运行
+	 */
+	public void stop();
 
 	/**
 	 * 写入文件

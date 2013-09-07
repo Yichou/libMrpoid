@@ -1,12 +1,12 @@
 #include "timer.h"
 
-#include <sys\types.h>
-#include <asm\signal.h>
-#include <linux\time.h>
+#include <sys/types.h>
+#include <asm/signal.h>
+#include <linux/time.h>
 #include <malloc.h>
 #include <string.h>
 #include <signal.h>
-#include <sys\time.h>
+#include <sys/time.h>
 
 
 typedef struct {

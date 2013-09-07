@@ -619,7 +619,7 @@ void getRealIP(const char *buf, int len, int32 *ip, int32 *prot)
 		char portstr[8] = "80";
 
 		readLine(p, line);
-		LOGE(line);
+		LOGE("%s", line);
 
 		sscanf(line, "Host: %[^:]:%s", ipstr, portstr);
 
