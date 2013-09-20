@@ -7,6 +7,8 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -15,14 +17,17 @@ import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
+import android.preference.PreferenceScreen;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceActivity;
+import android.preference.PreferenceManager;
 import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.mrpoid.R;
 import com.mrpoid.core.EmuPath;
+import com.mrpoid.core.EmuPath.OnPathChangeListener;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
 import com.mrpoid.ui.PathPreference;
@@ -36,37 +41,39 @@ import com.yichou.sdk.SdkUtils;
  */
 public class EmuPreferenceActivity extends PreferenceActivity implements 
 	OnPreferenceChangeListener,
-	OnPreferenceClickListener {
+	OnPathChangeListener,
+	OnSharedPreferenceChangeListener
+	{
 	static final String TAG = EmuPreferenceActivity.class.getSimpleName();
 	
 	private PathPreference epMythroad, epSD;
 	private CheckBoxPreference chkpMulti;
+	private CheckBoxPreference chkPrivate;
 	private ListPreference lpScnSize;
 	private String oldScnSize;
 	private EmuPath emuPath;
+	private SharedPreferences sp;
 	
 	
 	@SuppressWarnings("deprecation")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		sp = PreferenceManager.getDefaultSharedPreferences(this);
+		sp.registerOnSharedPreferenceChangeListener(this);
 
 		addPreferencesFromResource(R.xml.preferences_new);
+//		findPreference("version").setOnPreferenceClickListener(this);
+//		findPreference("advanced").setOnPreferenceClickListener(this);
+//		findPreference("checkUpdate").setOnPreferenceClickListener(this);
 		
-//		sp = PreferenceManager.getDefaultSharedPreferences(this);
-//		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-		
-		findPreference("version").setOnPreferenceClickListener(this);
-		findPreference("advanced").setOnPreferenceClickListener(this);
-		findPreference("checkUpdate").setOnPreferenceClickListener(this);
-
 		try {
 			findPreference("keypadLayout").setIntent(new Intent(this, KeypadActivity.class));
 		} catch (Exception e) {
 		}
 		
 		emuPath = EmuPath.getInstance();
-		
 		
 		Intent intent = new Intent(this, HelpActivity.class);
 		intent.setData(Uri.parse(getString(R.string.setup_wizard_uri)));
@@ -123,6 +130,18 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 			epMythroad.setDefRoot(emuPath.getSDPath());
 			epMythroad.setDefDir(emuPath.getMythroadPath());
 		}
+		
+		chkPrivate = (CheckBoxPreference) findPreference(Prefer.KEY_USE_PRIVATE_DIR);
+		chkPrivate.setOnPreferenceChangeListener(this);
+		
+		emuPath.addOnPathChangeListener(this);
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		emuPath.removeOnPathChangeListener(this);
+		sp.unregisterOnSharedPreferenceChangeListener(this);
 	}
 
 	@SuppressWarnings("deprecation")
@@ -138,9 +157,9 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-		case android.R.id.home:
-			finish();
-			return true;
+//		case android.R.id.home:
+//			finish();
+//			return true;
 		default:
 			return super.onOptionsItemSelected(item);
 		}
@@ -150,32 +169,38 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 	public boolean onPreferenceChange(Preference p, Object v) {
 //		EmuLog.i(TAG, "changed("+p+", "+v+")");
 		
-		if (p == epMythroad) {
+		/*if (p == epMythroad) {
 			epMythroad.setSummary((CharSequence) v);
 		} else if (p == epSD) {
 			epSD.setSummary((CharSequence) v);
 			epMythroad.setDefRoot(emuPath.getSDPath());
-		} else if (Prefer.KEY_MEM_SIZE.equals(p.getKey())) {
+		} else*/ 
+		if (Prefer.KEY_MEM_SIZE.equals(p.getKey())) {
 			p.setSummary((CharSequence) v + " M");
-		} else if (Prefer.KEY_SCN_SIZE.equals(p.getKey())) {
+			
+			return true;
+		} 
+		/*else if (Prefer.KEY_SCN_SIZE.equals(p.getKey())) {
 			p.setSummary((CharSequence) v);
 			if(chkpMulti.isChecked()){
 				//Prefer 后接受改变监听
 				epMythroad.setSummary( EmuPath.DEF_MYTHROAD_DIR + v.toString() + "/");
 			}
-		} else if (Prefer.KEY_MULTI_PATH.equals(p.getKey())) {
+		} */
+		else if (Prefer.KEY_MULTI_PATH.equals(p.getKey())) {
 			epMythroad.setEnabled(!(Boolean)v);
-			String path = "";
-			
-			if((Boolean)v){//选中后
-				path = emuPath.getMythroadPath() + MrpScreen.getSizeTag();
-			}else {
-				path = EmuPath.DEF_MYTHROAD_DIR;
-			}
-
-			epMythroad.setPath(path);
-			epMythroad.setSummary(path);
-		}
+//			String path = "";
+//			
+//			if((Boolean)v){//选中后
+//				path = emuPath.getMythroadPath() + MrpScreen.getSizeTag();
+//			}else {
+//				path = EmuPath.DEF_MYTHROAD_DIR;
+//			}
+//
+//			epMythroad.setPath(path);
+//			epMythroad.setSummary(path);
+			return true;
+		} 
 
 		return true;
 	}
@@ -235,14 +260,15 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 		return this;
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
-	public boolean onPreferenceClick(Preference p) {
-		if("advanced".equals(p.getKey())){
+	public boolean onPreferenceTreeClick(PreferenceScreen ps, Preference p) {
+		if ("checkUpdate".equals(p.getKey())) {
+			SdkUtils.checkUpdate(this);
+			System.out.println("check update!");
+			return true;
+		} else if("advanced".equals(p.getKey())){
 			if(!Prefer.notHintAdvSet)
 				showDialog(1);
-		} else if ("checkUpdate".equals(p.getKey())) {
-			SdkUtils.checkUpdate(this);
 		} else if ("version".equals(p.getKey())) {
 			showDialog(3);
 		} else if (p == epMythroad) {
@@ -254,6 +280,18 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 			return true;
 		} 
 		
-		return false;
+		return super.onPreferenceTreeClick(ps, p);
+	}
+
+	@Override
+	public void onPathChanged(String newPath, String oldPath) {
+		epMythroad.setSummary(emuPath.getMythroadPath());
+		epSD.setSummary(emuPath.getSDPath());
+	}
+
+	@Override
+	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+		// TODO Auto-generated method stub
+		
 	}
 }

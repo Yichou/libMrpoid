@@ -17,6 +17,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.os.Environment;
 import android.view.MotionEvent;
 import android.widget.Toast;
@@ -47,13 +48,20 @@ public class MrpScreen {
 	private Rect textRectD = new Rect(); //测量字符用
 	private char[] tmpBuf = new char[2];
 	
+	private Typeface mTypeface;
+	
+	
 	public MrpScreen(Emulator emulator) {
 		super();
 		this.emulator = emulator;
 		
-		paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+		paint = new Paint();
 		paint.setTextSize(16);
-		paint.setStyle(Paint.Style.FILL);
+		paint.setAntiAlias(true);
+//		paint.setStyle(Paint.Style.FILL);
+		
+		mTypeface = Typeface.createFromAsset(emulator.getContext().getAssets(), "fonts/COUR.TTF");
+		paint.setTypeface(mTypeface);
 	}
 	
 	public void setTextSize(int size) {
@@ -108,18 +116,18 @@ public class MrpScreen {
 		//顶、左 对齐 +charH-2
 		cacheCanvas.drawText(tmpBuf, 0,1, x, y+CHR_H-2, paint);
 		
-		paint.getTextBounds(tmpBuf, 0, 1, textRect);
+//		paint.getTextBounds(tmpBuf, 0, 1, textRect);
 //		if(lastY != y){ //新的一行
 //			lastY = y;
 //			buttom = y;
 //		}
 		
-		int tmp = 0;
+//		int tmp = 0;
 		
 //		if(c >= 33 && c <= 126){ //ascii可见字符
 //			tmp = y - textRectD.top + textRect.top;
 //		}else {
-			tmp = y - textRect.top;
+//			tmp = y - textRect.top;
 //		}
 		
 		//顶、左 对齐 +charH-2

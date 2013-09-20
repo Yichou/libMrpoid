@@ -9,7 +9,6 @@ import java.util.TimerTask;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -57,7 +56,6 @@ import com.mrpoid.core.MrpFile;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
 import com.mrpoid.keysprite.ChooserFragment;
-import com.yichou.common.InternalID;
 import com.yichou.sdk.SdkUtils;
 
 /**
@@ -151,9 +149,8 @@ public class EmulatorActivity extends FragmentActivity implements
 		mSmsReceiver.unRegister();
 		emulator.pause();
 		
-		if (!isFinishing()) {
-			backNotification2();
-		}
+		if (!isFinishing())
+			entryBackground();
 
 		super.onPause();
 	}
@@ -162,7 +159,7 @@ public class EmulatorActivity extends FragmentActivity implements
 	protected void onResume() {
 		EmuLog.i(TAG, "onResume");
 
-		cancelNotification();
+		backFroground();
 		
 		SdkUtils.onResume(this);
 		emulator.resume();
@@ -180,7 +177,6 @@ public class EmulatorActivity extends FragmentActivity implements
 			SdkUtils.event(this, "beKilled", "");
 		}
 		
-		cancelNotification();
 		if(timer != null){
 			timer.cancel();
 			timer = null;
@@ -205,7 +201,6 @@ public class EmulatorActivity extends FragmentActivity implements
 	@Override
 	protected void onRestart() {
 		EmuLog.i(TAG, "onRestart");
-		cancelNotification();
 		super.onRestart();
 	}
 	
@@ -393,7 +388,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		
 		menu.add(0, R.id.mi_scale_mode, i++, R.string.scaling_mode);
 
-		menu.add(0, R.id.mi_tools, i++, R.string.tools);
+//		menu.add(0, R.id.mi_tools, i++, R.string.tools);
 		
 		return true;
 	}
@@ -580,49 +575,17 @@ public class EmulatorActivity extends FragmentActivity implements
 		}
 	}
 	
-	private boolean isNotificationShow = false;
-	
-	//自定义的setNotiType()方法
-	@SuppressWarnings("deprecation")
-	private void backNotification2() {
-		// 建立新的Intent
-		Intent notifyIntent = new Intent(this, EmulatorActivity.class);
-		notifyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-		
-		// 建立PendingIntent作为设定递延执行的Activity
-		PendingIntent appIntent = PendingIntent.getActivity(EmulatorActivity.this, 0, notifyIntent, 0);
-		
-		// 建立Notification，并设定相关参数
-		Notification n = new Notification(R.drawable.ic_notify_small, null, System.currentTimeMillis());
-		n.setLatestEventInfo(this, 
-				emulator.getCurMrpFile().getAppName(), 
-				getString(R.string.hint_click_to_back), 
-				appIntent);
-		
-		if(n.contentView != null){
-			n.contentView.setImageViewResource(InternalID.id_icon, R.drawable.ic_notify);
-		}
-		
-		n.defaults = Notification.DEFAULT_LIGHTS;
-		n.flags = Notification.FLAG_ONGOING_EVENT; //不可清楚
-		
-		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		manager.notify(1001, n);
-		
-		isNotificationShow = true;
-		
+	private void entryBackground() {
+		startService(new Intent(this, EmuService.class).setAction(EmuService.ACTION_FOREGROUND));
 		SdkUtils.event(this, "backrun", EmuUtils.getTimeNow());
 	}
 	
-	// 取消通知
-	public void cancelNotification() {
-		if(isNotificationShow){
-			NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-			notificationManager.cancel(1001);
-
-			isNotificationShow = false;
-			SdkUtils.event(this, "fgrun", EmuUtils.getTimeNow());
-		}
+	private void backFroground() {
+		stopService(new Intent(this, EmuService.class));
+		
+		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		manager.cancel(1001);
+		SdkUtils.event(this, "fgrun", EmuUtils.getTimeNow());
 	}
 	
 	@Override

@@ -81,14 +81,10 @@ public class EmulatorView extends SurfaceView implements
 
 			if (Prefer.enableAntiAtial)
 				canvas.setDrawFilter(filter);
+			else
+				canvas.setDrawFilter(null);
 			
 			screen.draw(canvas);
-			if (Prefer.enableAntiAtial)
-				canvas.setDrawFilter(null);
-
-			paint.setColor(Color.RED);
-			// canvas.drawText(DECL, (getWidth()-paint.measureText(DECL))/2,
-			// getHeight()-10, paint);
 			
 			holder.unlockCanvasAndPost(canvas);
 		}

@@ -108,20 +108,18 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 
 		setScaleMode(sp.getString("scalingMode", DEF_SCALE_MOD));
 		
-		if(scSize.x == 480){
+		if(scSize.x == 480 && scSize.y == 800){
 			setMrpscnType(sp.getString(KEY_SCN_SIZE, "240x400"));
+			showStatusBar = false;
 		}else {
 			setMrpscnType(sp.getString(KEY_SCN_SIZE, "240x320"));
+			showStatusBar = sp.getBoolean(KEY_SHOW_STATUSBAR, true);
 		}
 		
+		//读取部分变量
 		dpadAtLeft = sp.getBoolean("dpadAtLeft", false);
-		//默认
-		showStatusBar = sp.getBoolean(KEY_SHOW_STATUSBAR, (scSize.y<=480? false : true));
-		
-//		EmuLog.i(TAG, "showStatusBar = " + showStatusBar);
-		
 		noKey = sp.getBoolean("noKey", false);
-		enableAntiAtial = sp.getBoolean("enableAntiAtial", true);
+		enableAntiAtial = sp.getBoolean(KEY_ANTI_ATIAL, true);
 		fullScnEditor = sp.getBoolean("fullScnEditor", false);
 		catchVolumekey = sp.getBoolean("catchVolumekey", B_DEF_CATCH_VOLUME_KEY);
 		volume = sp.getInt("volume", 100);
@@ -132,33 +130,23 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		showFloatButton = sp.getBoolean("showFloatButton", false);
 		limitInputLength = sp.getBoolean("showFloatButton", false);
 		enableKeyVirb = sp.getBoolean(KEY_ENABLE_KEY_VIRB, true);
+		usePrivateDir = sp.getBoolean(KEY_USE_PRIVATE_DIR, false);
+		sdPath = sp.getString(KEY_SDCARD_PATH, EmuPath.DEF_SD_PATH);
+		mythoadPath = sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR);
+		privateDir = context.getFilesDir().getAbsolutePath() + "/"; //以 / 结尾
 		
 		Emulator emulator = Emulator.getInstance();
 		
 		emulator.native_setIntOptions("enableSound", sp.getBoolean("enableSound", true)? 1 : 0);
 		emulator.native_setIntOptions("platdrawchar", sp.getBoolean("platdrawchar", B_DEF_PLAT_DRAW_CHAR)? 1 : 0);
-//		emulator.setThreadMod(Integer.valueOf(sp.getString("thread", "0")));
-//		emulator.native_setIntOptions("uselinuxTimer", sp.getBoolean("uselinuxTimer", false) ? 1 : 0);
-//		emulator.native_setIntOptions("enableExram", sp.getBoolean("enableExram", false) ? 1 : 0);
-//		emulator.setIntOptions("platform", Integer.valueOf(sp.getString("platform", "12"))); // linux
 		emulator.native_setIntOptions("uselinuxTimer", 0);
 		emulator.native_setIntOptions("enableExram", 0);
 		emulator.native_setIntOptions("platform", 12); // linux
 		emulator.native_setIntOptions("uselinuxTimer", 1);
 		emulator.native_setIntOptions("memSize", Integer.valueOf(sp.getString(KEY_MEM_SIZE, DEF_MEM_SIZE))); //虚拟机内存 单位 M
 
-		if(FileUtils.isSDMounted()){
-			EmuPath.getInstance().setSDPath(sp.getString(KEY_SDCARD_PATH, EmuPath.DEF_SD_PATH));
-		}else {
-			EmuPath.getInstance().setSDPath(context.getFilesDir().getAbsolutePath());
-			Toast.makeText(context, "没有SD卡！", Toast.LENGTH_SHORT).show();
-		}
-		
-		if(differentPath){
-			EmuPath.getInstance().setMythroadPath( EmuPath.DEF_MYTHROAD_DIR + MrpScreen.getSizeTag() + "/");
-		} else {
-			EmuPath.getInstance().setMythroadPath(sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR));
-		}
+		//模拟器路径初始化
+		EmuPath.getInstance().init();
 
 		// api log
 		emulator.native_setIntOptions("enableApilog", sp.getBoolean("enableApilog", false) ? 1 : 0);
@@ -168,18 +156,25 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		
 		otherRead();
 		
+		checkUpdate(context);
+	}
+	
+	private void checkUpdate(Context context) {
 		//自动更新处理
 		if (autoUpdate) {
-			int lastTime = sp.getInt(KEY_LAST_UPDATE_TIME, 0);
 			int nowTime = EmuUtils.getDayOfYear();
+			int lastTime = sp.getInt(KEY_LAST_UPDATE_TIME, nowTime - 8); //首次自动更新
 			if(nowTime - lastTime >= 7){ //每周检测更新
 				SdkUtils.checkUpdate(context);
-				
 				sp.edit()
-				.putInt(KEY_LAST_UPDATE_TIME, nowTime)
-				.commit();
+					.putInt(KEY_LAST_UPDATE_TIME, nowTime)
+					.commit();
 			}
 		}
+	}
+	
+	public SharedPreferences getSp() {
+		return sp;
 	}
 
 	@Override
@@ -216,11 +211,16 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			dpadAtLeft = sp.getBoolean(key, false);
 		} else if (key.equals("fullScnEditor")) {
 			fullScnEditor = sp.getBoolean(key, false);
-		} else if (key.equals(KEY_SDCARD_PATH)) {
-			EmuPath.getInstance().setSDPath(sp.getString(KEY_SDCARD_PATH, EmuPath.DEF_SD_PATH));
-		} else if (key.equals(KEY_MYTHROAD_PATH)) {
-			EmuPath.getInstance().setMythroadPath(sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR));
-		} else if (key.equals(KEY_SCN_SIZE)) {
+		} else if (key.equals(KEY_SDCARD_PATH)) 
+		{
+			sdPath = sp.getString(KEY_SDCARD_PATH, EmuPath.DEF_SD_PATH);
+			EmuPath.getInstance().setSDPath(sdPath);
+		} else if (key.equals(KEY_MYTHROAD_PATH)) 
+		{
+			mythoadPath = sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR);
+			EmuPath.getInstance().setMythroadPath(mythoadPath);
+		} else if (key.equals(KEY_SCN_SIZE))
+		{
 			MrpScreen.parseScreenSize(sp.getString(key, "240x320"));
 			
 			if(differentPath){
@@ -237,11 +237,15 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		} else if (key.equals(KEY_MULTI_PATH)) {
 			differentPath = sp.getBoolean(key, B_DEF_MULTI_PATH);
 			
-			if(differentPath){
-				EmuPath.getInstance().setMythroadPath( EmuPath.DEF_MYTHROAD_DIR + MrpScreen.getSizeTag() + "/");
-			}else {
-				EmuPath.getInstance().setMythroadPath(sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR));
-			}
+			System.out.println("mutil = " + differentPath);
+			
+			EmuPath.getInstance().init();
+			
+//			if(differentPath){
+//				EmuPath.getInstance().setMythroadPath( EmuPath.DEF_MYTHROAD_DIR + MrpScreen.getSizeTag() + "/");
+//			}else {
+//				EmuPath.getInstance().setMythroadPath(sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR));
+//			}
 		} else if (key.equals(KEY_AUTO_UPDATE)) {
 			autoUpdate = sp.getBoolean(KEY_AUTO_UPDATE, true);
 		} else if (key.equals(KEY_LAST_UPDATE_TIME)) {
@@ -252,7 +256,15 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			emulator.native_setIntOptions(KEY_EXRAM, sp.getBoolean(key, false) ? 1 : 0);
 		} else if (key.equals(KEY_ENABLE_KEY_VIRB)) {
 			enableKeyVirb = sp.getBoolean(KEY_ENABLE_KEY_VIRB, true);
-		}else {
+		} else if (key.equals(KEY_ANTI_ATIAL)) {
+			enableAntiAtial = sp.getBoolean(KEY_ANTI_ATIAL, true);
+		} else if (key.equals(KEY_USE_PRIVATE_DIR)) {
+			usePrivateDir = sp.getBoolean(KEY_USE_PRIVATE_DIR, false);
+			
+			System.out.println("private = " + usePrivateDir);
+			
+			EmuPath.getInstance().init(); //重新初始化
+		} else {
 			//应该全部改为使用 native_setStringOptions() 这样可以避免转型失败
 			emulator.native_setIntOptions(key, sp.getBoolean(key, true) ? 1 : 0);
 		}
@@ -283,6 +295,12 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 	public static boolean showFloatButton;
 	public static boolean showMenu = true;
 	public static boolean limitInputLength = true;
+	public static boolean usePrivateDir = false;
+	public static String mythoadPath = "";
+	public static String sdPath = "";
+	public static String privateDir;
+	
+	
 	/**
 	 * 不同分辨率在不同目录下运行
 	 * 
@@ -322,6 +340,9 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		Prefer.showMenu = showMenu;
 	}
 	
+	
+	public static final String KEY_USE_PRIVATE_DIR = "usePrivateDir";
+	public static final String KEY_ANTI_ATIAL = "enableAntiAtial";
 	public static final String KEY_MYTHROAD_PATH = "mythroadPath";
 	public static final String KEY_SDCARD_PATH = "sdpath";
 	public static final String KEY_ENABLE_KEY_VIRB = "enableKeyVirb";

@@ -22,14 +22,8 @@
 					<folderInfo id="com.android.toolchain.gcc.291906895.772952316" name="/" resourcePath="">
 						<toolChain id="com.android.toolchain.gcc.429283854" name="com.android.toolchain.gcc" superClass="com.android.toolchain.gcc">
 							<targetPlatform binaryParser="org.eclipse.cdt.core.ELF" id="com.android.targetPlatform.808707962" isAbstract="false" superClass="com.android.targetPlatform"/>
-							<builder arguments="NDK_DEBUG=1" command="ndk-build" id="com.android.builder.1618476905" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Android Builder" superClass="com.android.builder">
-								<outputEntries>
-									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name="obj"/>
-									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name="libs"/>
-								</outputEntries>
-							</builder>
+							<builder arguments="NDK_DEBUG=1" command="ndk-build" id="com.android.builder.1618476905" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Android Builder" superClass="com.android.builder"/>
 							<tool id="com.android.gcc.compiler.964943949" name="Android GCC Compiler" superClass="com.android.gcc.compiler">
-								<option id="com.android.gcc.option.includePath.1014915407" superClass="com.android.gcc.option.includePath"/>
 								<inputType id="com.android.gcc.inputType.491011375" superClass="com.android.gcc.inputType"/>
 							</tool>
 						</toolChain>
@@ -338,9 +332,7 @@
 								</outputEntries>
 							</builder>
 							<tool id="com.android.gcc.compiler.670269281" name="Android GCC Compiler" superClass="com.android.gcc.compiler">
-								<option id="com.android.gcc.option.includePath.986776051" superClass="com.android.gcc.option.includePath" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;E:\android-ndk-r8e\platforms\android-8\arch-arm\usr\include&quot;"/>
-								</option>
+								<option id="com.android.gcc.option.includePath.986776051" superClass="com.android.gcc.option.includePath" valueType="includePath"/>
 								<inputType id="com.android.gcc.inputType.1667761211" superClass="com.android.gcc.inputType"/>
 							</tool>
 						</toolChain>

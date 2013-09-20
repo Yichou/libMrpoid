@@ -46,6 +46,10 @@
         android:label="@string/app_name" >
 
         <!-- mrpoid 所需要的组件 -->
+        <service
+            android:name="com.mrpoid.app.EmuService"
+            android:exported="false" />
+
         <activity
             android:name="com.mrpoid.app.EmulatorActivity"
             android:configChanges="orientation|keyboard"
@@ -76,25 +80,22 @@
             android:label="@string/settings"
             android:theme="@style/emu_theme_light" >
         </activity>
-        
         <activity
-            android:multiprocess="true"
-            android:launchMode="standard"
-            android:exported="true"
             android:name="com.mrpoid.app.ExternActivity"
-            android:configChanges="orientation|keyboard" >
+            android:configChanges="orientation|keyboard"
+            android:exported="true"
+            android:launchMode="standard"
+            android:multiprocess="true" >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.EDIT" />
 
                 <category android:name="android.intent.category.DEFAULT" />
 
-                <data
-                    android:mimeType="application/mrp"
-                     />
+                <data android:mimeType="application/mrp" />
             </intent-filter>
         </activity>
-       
+
         <!-- mrpoid 所需要的组件 -->
 
         <meta-data

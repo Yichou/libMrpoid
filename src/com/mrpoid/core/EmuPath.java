@@ -3,9 +3,10 @@ package com.mrpoid.core;
 import java.io.File;
 import java.util.ArrayList;
 
-import com.yichou.common.FileUtils;
-
+import android.content.Context;
 import android.os.Environment;
+
+import com.yichou.common.FileUtils;
 
 /**
  * 路径管理
@@ -34,6 +35,7 @@ public final class EmuPath {
 	
 	private static EmuPath instance;
 	
+	
 	private static final class InstanceHolder {
 		static final EmuPath INSTANCE = new EmuPath();
 	}
@@ -44,6 +46,28 @@ public final class EmuPath {
 		}
 
 		return instance;
+	}
+	
+	public void init() {
+		if(!FileUtils.isSDMounted()) {
+			Prefer.usePrivateDir = true;
+//			Toast.makeText(context, "没有SD卡！", Toast.LENGTH_SHORT).show();
+		}
+		
+		if(Prefer.usePrivateDir) { //使用私有目录
+			setSDPath(Prefer.privateDir);
+		}else {
+			setSDPath(Prefer.sdPath);
+		}
+		
+		if(Prefer.differentPath) { //不同路径
+			setMythroadPath(DEF_MYTHROAD_DIR + MrpScreen.getSizeTag() + "/");
+		} else {
+			setMythroadPath(Prefer.mythoadPath);
+		}
+		
+		EmuLog.i(TAG, "sd path = " + SD_PATH);
+		EmuLog.i(TAG, "mythroad path = " + ROOT_DIR);
 	}
 	
 	private EmuPath(){
@@ -121,26 +145,37 @@ public final class EmuPath {
 	 * @param tmp
 	 */
 	public void setSDPath(String tmp) {
-		if(tmp != null && tmp.length() > 0){
-			if (!SD_PATH.equals(tmp)) {
-				if(FileUtils.SUCCESS != FileUtils.createDir(tmp)){
-					EmuLog.e(TAG, "setSDPath: " + tmp+ " mkdirs FAIL!");
-					return;
-				}
-				
-				int i = tmp.length();
-				if(tmp.charAt(i-1) != '/'){
-					tmp += "/";
-				}
-				LAST_SD_PATH = SD_PATH;
-				SD_PATH = tmp;
-				Emulator.getInstance().native_setStringOptions("sdpath", SD_PATH);
-				
-				notifyListeners();
-
-				EmuLog.i(TAG, "SD卡路径设置为：" + SD_PATH);
-			}
+		if (tmp == null || tmp.length() == 0) {
+			EmuLog.e(TAG, "setSDPath: input error!");
+			return;
 		}
+		
+		if(SD_PATH.equals(tmp))
+			return;
+		
+		File path = new File(tmp);
+		if (FileUtils.SUCCESS != FileUtils.createDir(path)) {
+			EmuLog.e(TAG, "setSDPath: " + path.getAbsolutePath() + " mkdirs FAIL!");
+			return;
+		}
+		
+		if(!path.canRead() || !path.canWrite()) {
+			EmuLog.e(TAG, "setSDPath: " + path.getAbsolutePath() + " can't read or write!");
+			return;
+		}
+		
+		int i = tmp.length();
+		if(tmp.charAt(i-1) != '/'){
+			tmp += "/";
+		}
+		
+		LAST_SD_PATH = SD_PATH;
+		SD_PATH = tmp;
+		Emulator.getInstance().native_setStringOptions("sdpath", SD_PATH);
+		
+		notifyListeners();
+
+		EmuLog.i(TAG, "sd path has change to: " + SD_PATH);
 	}
 	
 	public String getSDPath() {
@@ -153,27 +188,36 @@ public final class EmuPath {
 	 * @param tmp
 	 */
 	public void setMythroadPath(String tmp) {
-		if (tmp != null && tmp.length() > 0) {
-			if (!ROOT_DIR.equals(tmp)) {
-				File path = new File(SD_PATH, tmp);
-				if(FileUtils.SUCCESS != FileUtils.createDir(path)){
-					EmuLog.e(TAG, "setMythroadPath: " + path.getAbsolutePath() + "mkdirs FAIL!");
-					return;
-				}
-
-				int i = tmp.length();
-				if (tmp.charAt(i - 1) != '/') {
-					tmp += "/";
-				}
-				LAST_ROOT_DIR = ROOT_DIR;
-				ROOT_DIR = tmp;
-				Emulator.getInstance().native_setStringOptions("mythroadPath", ROOT_DIR);
-
-				notifyListeners();
-				
-				EmuLog.i(TAG, "Mythroad 路径设置为：" + ROOT_DIR);
-			}
+		if (tmp == null || tmp.length() == 0) {
+			EmuLog.e(TAG, "setMythroadPath: input error!");
+			return;
 		}
+		
+		if(ROOT_DIR.equals(tmp))
+			return;
+		
+		File path = new File(SD_PATH, tmp);
+		if (FileUtils.SUCCESS != FileUtils.createDir(path)) {
+			EmuLog.e(TAG, "setMythroadPath: " + path.getAbsolutePath() + " mkdirs FAIL!");
+			return;
+		}
+		
+		if(!path.canRead() || !path.canWrite()) {
+			EmuLog.e(TAG, "setMythroadPath: " + path.getAbsolutePath() + " can't read or write!");
+			return;
+		}
+
+		int i = tmp.length();
+		if (tmp.charAt(i - 1) != '/') {
+			tmp += "/";
+		}
+		LAST_ROOT_DIR = ROOT_DIR;
+		ROOT_DIR = tmp;
+		Emulator.getInstance().native_setStringOptions("mythroadPath", ROOT_DIR);
+
+		notifyListeners();
+
+		EmuLog.i(TAG, "mythroad path has change to: " + ROOT_DIR);
 	}
 	
 	public String getMythroadPath(){

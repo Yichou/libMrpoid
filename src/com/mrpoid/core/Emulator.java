@@ -16,6 +16,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Handler.Callback;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.telephony.TelephonyManager;
 import android.widget.Toast;
@@ -147,7 +148,7 @@ public class Emulator implements Callback {
 	private Emulator(final Context context) {
 		EmuLog.i(TAG, "Emulator(Context context)");
 		
-		this.context = context;
+		this.context = context.getApplicationContext();
 		
 		screen = new MrpScreen(this);
 		audio = new EmuAudio(context, this);
@@ -688,6 +689,17 @@ public class Emulator implements Callback {
 //						vm_event(MrDefines.MR_SMS_GET_SC, 0, 0);
 //					}
 //				}, 500);
+			}else if ("showToast".equals(action)) {
+				Toast.makeText(emulatorActivity, args[1], Toast.LENGTH_SHORT).show();
+			}else if ("crash".equals(action)) {
+				new Thread() {
+					@Override
+					public void run() {
+						Looper.prepare();
+						Toast.makeText(context, "~~~~(>_<)~~~~ 又崩溃了，即将退出！", Toast.LENGTH_LONG).show();
+						Looper.loop();
+					}
+				}.start();
 			}
 		}
 	}

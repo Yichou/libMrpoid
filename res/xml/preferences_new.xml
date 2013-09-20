@@ -48,7 +48,7 @@
                 android:summary="@string/enableAntiAtial_summery"
                 android:title="@string/enableAntiAtial" />
             <CheckBoxPreference
-                android:defaultValue="false"
+                android:defaultValue="true"
                 android:key="showStatusBar"
                 android:title="@string/show_statusbar" />
             <CheckBoxPreference
@@ -99,27 +99,25 @@
         <PreferenceScreen
             android:key="advanced"
             android:title="@string/other_settings" >
-            
-            <PreferenceCategory android:title="@string/screensize" >
+            <PreferenceCategory android:title="@string/title_paths" >
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:disableDependentsState="true"
+                    android:key="usePrivateDir"
+                    android:summary="@string/private_dir_sum"
+                    android:title="@string/private_dir" />
                 <CheckBoxPreference
                     android:defaultValue="true"
                     android:key="runUnderMultiPath"
                     android:summary="@string/run_under_multi_path_sum"
                     android:title="@string/run_under_multi_path" />
-            </PreferenceCategory>
-            <PreferenceCategory android:title="@string/title_paths" >
 
-                <!--
-                     <EditTextPreference
-                    android:dialogMessage="@string/sdpath_msg"
-                    android:dialogTitle="@string/sdpath"
-                    android:key="sdpath"
-                    android:title="@string/sdpath" />
-                -->
                 <com.mrpoid.ui.PathPreference
+                    android:dependency="usePrivateDir"
                     android:key="sdpath"
                     android:title="@string/sdpath" />
                 <com.mrpoid.ui.PathPreference
+                    android:dependency="usePrivateDir"
                     android:key="mythroadPath"
                     android:title="@string/mythroad_path" />
             </PreferenceCategory>

@@ -156,10 +156,27 @@ static void freeJniId()
 
 }
 
+//------------------------
+void sevg_handler(int signo)
+{
+	char *argv[2] = {
+			"crash",
+			"不小心又崩溃了%>_<%"
+	};
+
+	N2J_callVoidMethodString(2, argv);
+
+	sleep(2);
+
+	exit(0);
+}
+
 //初始化模拟器  唯一实例
 void native_create(JNIEnv *env, jobject self, jobject mrpScreen, jobject emuAudio)
 {
 	LOGI("native_create");
+
+	signal(SIGSEGV, sevg_handler);
 
 	jniEnv = env;
 
@@ -250,7 +267,8 @@ void native_callback(JNIEnv * env, jobject self, int what, int param)
 }
 
 void native_mrpScreenRest(JNIEnv * env, jobject self,
-		jobject cacheBitmap, jobject realBitmap, jint width, jint height) {
+		jobject cacheBitmap, jobject realBitmap, jint width, jint height)
+{
 	if (!cacheBitmap || !realBitmap || width <= 0 || height <= 0) {
 		LOGE("native_initScreen error params!");
 		return;

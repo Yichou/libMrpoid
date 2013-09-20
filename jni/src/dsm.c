@@ -201,17 +201,14 @@ int32 mr_cacheSync(void* addr, int32 len)
 }
 #endif
 
-#if 0
-static void segv_handler (int signal_number)
-{
-	printf ("memory accessed!\n");
-}
+
+#if 1
 
 static int mem_fd = 0;
 int32 mr_mem_get(char** mem_base, uint32* mem_len)
 {
 	int alloc_size;
-	char* memory;
+	char* memory, *ret;
 	int pagesize, pagecount;
 
 	pagesize = getpagesize();
@@ -232,6 +229,16 @@ int32 mr_mem_get(char** mem_base, uint32* mem_len)
 		exit(1);
 	}
 
+	//映射按键扫描
+	ret = mmap((void*)(0x81080000), pagesize, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_FIXED, mem_fd, 0);
+	if(ret == MAP_FAILED) {
+		LOGE("map keyscan fail!");
+	} else {
+		LOGI("addr:%p, v0 %d", ret, *ret);
+		*ret = 1;
+		LOGI("v1 %d", *ret);
+	}
+
 	*mem_base = memory;
 	*mem_len = alloc_size;
 	gEmulatorParams.vm_mem_base = memory;
@@ -247,6 +254,8 @@ int32 mr_mem_free(char* memory, uint32 alloc_size)
 	LOGI("mr_mem_free addr: 0x%08x, len: %d", memory, alloc_size);
 
 	munmap (memory, alloc_size);
+	munmap((void*)(0x81080000), getpagesize());
+
 	close(mem_fd);
 	mem_fd = -1;
 	gEmulatorParams.vm_mem_base = NULL;
@@ -504,7 +513,7 @@ int32 mr_sleep(uint32 ms)
 	if(showApiLog) 
 		LOGI("mr_sleep(%d)", ms);
 
-	usleep(ms);
+	usleep(ms * 1000);
 
 	return MR_SUCCESS;
 }
