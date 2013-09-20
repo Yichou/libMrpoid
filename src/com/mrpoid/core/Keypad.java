@@ -320,7 +320,7 @@ public class Keypad extends Director implements ClickCallback {
 				EmuStatics.emulatorActivity.openOptionsMenu();
 		}else {
 			if(Prefer.enableKeyVirb)
-				vibrator.vibrate(40);
+				vibrator.vibrate(20);
 			
 			Emulator.getInstance().postMrpEvent(down? MrDefines.MR_KEY_PRESS : MrDefines.MR_KEY_RELEASE,
 					key, 

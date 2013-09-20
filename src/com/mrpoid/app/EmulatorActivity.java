@@ -73,7 +73,8 @@ public class EmulatorActivity extends FragmentActivity implements
 	static final String ACTION_SMS_SENT = "com.mrpej.mrpoid.SMS_SENT_ACTION";
 	
 	static final int MSG_ID_SHOWEDIT = 1001,
-		MSG_ID = 1002;
+		MSG_ID_UPDATE = 1002,
+		MSG_ID_MAX = 1100;
 	
 	static final int REQ_SHOWEDIT = 1001,
 		REQ_GET_IMAGE = 1002;
@@ -90,13 +91,31 @@ public class EmulatorActivity extends FragmentActivity implements
 	private EmulatorView emulatorView;
 	private Emulator emulator;
 	public Handler handler;
-	private Timer timer = null;
 	private LayoutInflater inflater;
 	private SmsReceiver mSmsReceiver;
 	private BroadcastReceiver mReceiver;
 	private ViewGroup continer;
 	private KeypadView padView;
 	
+	
+	@Override
+	public boolean handleMessage(Message msg) {
+		switch (msg.what) {
+		case MSG_ID_UPDATE:
+			updateMemInfo();
+			handler.sendEmptyMessageDelayed(MSG_ID_UPDATE, 1000);
+			break;
+			
+		default:
+			return false;
+		}
+
+		return true;
+	}
+	
+	@Override
+	public void onClick(View v) {
+	}
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -176,13 +195,8 @@ public class EmulatorActivity extends FragmentActivity implements
 			EmuLog.e(TAG, "后台运行被杀！");
 			SdkUtils.event(this, "beKilled", "");
 		}
-		
-		if(timer != null){
-			timer.cancel();
-			timer = null;
-		}
+
 		Keypad.releaseBmp();
-		
 		unregisterReceiver(mReceiver);
 		
 		EmuStatics.emulatorActivity = null;
@@ -227,7 +241,7 @@ public class EmulatorActivity extends FragmentActivity implements
 	protected void onRestoreInstanceState(Bundle savedInstanceState) {
 		EmuLog.i(TAG, "onRestoreInstanceState:" + savedInstanceState);
 		
-		if(savedInstanceState.getBoolean("hasSaved", false)){
+		if(savedInstanceState.getBoolean("hasSaved", false)) {
 			String curMrpPath = savedInstanceState.getString("curMrpPath");
 			if(curMrpPath != null){
 				EmuLog.i(TAG, "异常恢复成功");
@@ -240,7 +254,7 @@ public class EmulatorActivity extends FragmentActivity implements
 			}else {
 				finish();
 			}
-		}else {
+		} else {
 			finish();
 		}
 
@@ -302,31 +316,19 @@ public class EmulatorActivity extends FragmentActivity implements
 		continer.addView(tvMemory, p);
 
 		tvMemory.setVisibility(View.VISIBLE);
-		
-		//刷新内存信息
-		timer = new Timer();
-		timer.schedule(new TimerTask() {
-			@Override
-			public void run() {
-				handler.post(new Runnable() {
-					@Override
-					public void run() {
-						final String memInfo = String.format(Locale.US, 
-								"memoryinfo--\ntotal:%d\ntop:%d\nleft:%d", 
-								emulator.N2J_memLen, emulator.N2J_memTop, emulator.N2J_memLeft);
-						
-						EmuLog.i(TAG, memInfo);
-
-						emulator.native_getMemoryInfo();
-						tvMemory.setText(memInfo);
-					}
-				});
-			}
-		}, 500, 1000);
+		handler.sendEmptyMessageDelayed(MSG_ID_UPDATE, 1000);
 	}
 	
-	@Override
-	public void onClick(View v) {
+	private void updateMemInfo() {
+		emulator.native_getMemoryInfo();
+
+		final String memInfo = String.format(Locale.US, 
+				"memoryinfo--\ntotal:%d\ntop:%d\nleft:%d", 
+				emulator.N2J_memLen, emulator.N2J_memTop, emulator.N2J_memLeft);
+		
+		EmuLog.i(TAG, memInfo);
+
+		tvMemory.setText(memInfo);
 	}
 	
 	public void postUIRunable(Runnable r) {
@@ -387,8 +389,7 @@ public class EmulatorActivity extends FragmentActivity implements
 //		subMenu.add(0, R.id.mi_image, j++, R.string.image);
 		
 		menu.add(0, R.id.mi_scale_mode, i++, R.string.scaling_mode);
-
-//		menu.add(0, R.id.mi_tools, i++, R.string.tools);
+		menu.add(0, R.id.mi_tools, i++, R.string.tools);
 		
 		return true;
 	}
@@ -637,13 +638,6 @@ public class EmulatorActivity extends FragmentActivity implements
 		}
 	}
 
-	@Override
-	public boolean handleMessage(Message msg) {
-//		switch (msg.what) {
-//		}
-		return false;
-	}
-	
 	/**
 	 * 发送短信提示
 	 * 
