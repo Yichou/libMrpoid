@@ -1,11 +1,9 @@
 package com.mrpoid.app;
 
 import android.app.Activity;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Toast;
 
-import com.mrpoid.core.EmuUtils;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.Prefer;
 import com.mrpoid.core.Res;
@@ -21,28 +19,16 @@ import com.yichou.sdk.SdkUtils;
  *
  */
 public abstract class BaseActivity extends Activity { //implements 
-	protected Emulator emulator;
-
+	
 	@Override
 	protected void onCreate(Bundle arg0) {
 		super.onCreate(arg0);
-
-		SdkUtils.setRealImpl(fetchSdk());
-
-		emulator = Emulator.getInstance(this);
-		if (emulator == null) {
-			Toast.makeText(this, "Emulator fial !", Toast.LENGTH_SHORT).show();
-			finish();
-			return;
-		}
-
-		// 一定要在模拟器初始化之后
-		Prefer.getInstance().init(this);
 
 		// 加载资源
 		Res.load(this);
 		
 		//错误报告
+		SdkUtils.setRealImpl(fetchSdk());
 		SdkUtils.enableCrashHandle(this, true);
 		SdkUtils.updateOnlineParams(this);
 		SdkUtils.setUpdateCfg(false, false);
@@ -55,18 +41,15 @@ public abstract class BaseActivity extends Activity { //implements
 					break;
 
 				case CheckUpdateCallback.RET_NO_NEW: // has no update
-					System.out.println("already new!");
-//					Toast.makeText(getActivity(), "已是最新版^_^", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getActivity(), "已是最新版^_^", Toast.LENGTH_SHORT).show();
 					break;
 					
 				case CheckUpdateCallback.RET_NO_WIFI: // none wifi
-					System.out.println("no wifi!");
-//					Toast.makeText(getActivity(), "你没有连接wifi哦", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getActivity(), "你没有连接wifi哦", Toast.LENGTH_SHORT).show();
 					break;
 					
 				case CheckUpdateCallback.RET_FAILUE: // time out
-					System.out.println("fail!");
-//					Toast.makeText(getActivity(), "网络好像不给力哟", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getActivity(), "网络好像不给力哟", Toast.LENGTH_SHORT).show();
 					break;
 				}
 			}
@@ -79,8 +62,6 @@ public abstract class BaseActivity extends Activity { //implements
 					Toast.makeText(getActivity(), "更新包下载失败，错误码" + ret , Toast.LENGTH_SHORT).show();
 			}
 		});
-		
-		
 	}
 	
 	private Activity getActivity(){

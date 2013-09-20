@@ -4,7 +4,7 @@
 
 #include <signal.h>
 
-#include "Emulator.h"
+#include "emulator.h"
 #include "vm.h"
 
 

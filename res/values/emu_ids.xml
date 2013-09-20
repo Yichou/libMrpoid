@@ -13,6 +13,7 @@
     <item type="id" name="edit_path"></item>
     <item type="id" name="tv_title"></item>
     <item type="id" name="tv_count"></item>
+     <item type="id" name="tv_info"></item>
     <item type="id" name="mi_about"></item>
     <item type="id" name="mi_close"></item>
     <item type="id" name="mi_foce_close"></item>

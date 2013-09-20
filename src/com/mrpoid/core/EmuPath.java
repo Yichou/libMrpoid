@@ -134,8 +134,7 @@ public final class EmuPath {
 	 */
 	public static File getPublicFilePath(String name){
 		File file = new File(PUBLIC_STROAGE_PATH);
-		if(!file.exists())
-			file.mkdirs();
+		FileUtils.createDir(file);
 		return new File(PUBLIC_STROAGE_PATH, name);
 	}
 	

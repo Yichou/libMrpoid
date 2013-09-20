@@ -1,7 +1,7 @@
 // TSF点阵字库模块 [4/30/2012 JianbinZhu]
-#include "..\mrporting.h"
-#include "..\emulator.h"
-#include "TSFFont.h"
+#include "mrporting.h"
+#include "emulator.h"
+#include "tsffont.h"
 
 #include <string.h>
 #include <unistd.h>

@@ -259,9 +259,9 @@ public class EmulatorView extends SurfaceView implements
 		
 		if(keyCode == KeyEvent.KEYCODE_MENU){
 			return super.onKeyUp(keyCode, event);
-		}else if ((keyCode==KeyEvent.KEYCODE_VOLUME_UP || keyCode==KeyEvent.KEYCODE_VOLUME_DOWN) && !Prefer.catchVolumekey) {
+		} else if ((keyCode==KeyEvent.KEYCODE_VOLUME_UP || keyCode==KeyEvent.KEYCODE_VOLUME_DOWN) && !Prefer.catchVolumekey) {
 			return super.onKeyUp(keyCode, event);
-		}else{
+		} else{
 			emulator.postMrpEvent(MrDefines.MR_KEY_RELEASE, transKeycode(keyCode), 0);
 		}
 		

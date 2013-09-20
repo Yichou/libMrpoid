@@ -11,12 +11,16 @@ typedef	unsigned _int64	uint64;
 typedef	 _int64	int64;
 #endif
 
-typedef  unsigned short     uint16;      /* Unsigned 16 bit value */
-typedef  unsigned long int  uint32;      /* Unsigned 32 bit value */
-typedef  long int                int32;      /* signed 32 bit value */
-typedef  unsigned char      uint8;        /*Unsigned  Signed 8  bit value */
-typedef  signed char          int8;        /* Signed 8  bit value */
-typedef  signed short         int16;       /* Signed 16 bit value */
+#ifndef MR_C_NUMBER_TYPE
+typedef  unsigned 	short     	uint16;      /* Unsigned 16 bit value */
+typedef  		 	short       int16;       /* Signed 16 bit value */
+
+typedef  unsigned 	int  		uint32;      /* Unsigned 32 bit value */
+typedef  			int         int32;      /* signed 32 bit value */
+
+typedef  unsigned 	char      	uint8;        /*Unsigned  Signed 8  bit value */
+typedef  signed 	char        int8;        /* Signed 8  bit value */
+#endif
 
 typedef char *			PSTR;
 typedef const char *	PCSTR;

@@ -26,11 +26,11 @@
 #include <errno.h>
 
 
-#include "Emulator.h"
+#include "emulator.h"
 
 #include "mrporting.h"
 
-#include "font/TSFFont.h"
+#include "font/tsffont.h"
 #include "encode.h"
 #include "utils.h"
 
@@ -201,14 +201,17 @@ int32 mr_cacheSync(void* addr, int32 len)
 }
 #endif
 
-
-#if 1
+#if 0
+static void segv_handler (int signal_number)
+{
+	printf ("memory accessed!\n");
+}
 
 static int mem_fd = 0;
 int32 mr_mem_get(char** mem_base, uint32* mem_len)
 {
 	int alloc_size;
-	char* memory, *ret;
+	char* memory;
 	int pagesize, pagecount;
 
 	pagesize = getpagesize();
@@ -229,16 +232,6 @@ int32 mr_mem_get(char** mem_base, uint32* mem_len)
 		exit(1);
 	}
 
-	//映射按键扫描
-	ret = mmap((void*)(0x81080000), pagesize, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_FIXED, mem_fd, 0);
-	if(ret == MAP_FAILED) {
-		LOGE("map keyscan fail!");
-	} else {
-		LOGI("addr:%p, v0 %d", ret, *ret);
-		*ret = 1;
-		LOGI("v1 %d", *ret);
-	}
-
 	*mem_base = memory;
 	*mem_len = alloc_size;
 	gEmulatorParams.vm_mem_base = memory;
@@ -254,8 +247,6 @@ int32 mr_mem_free(char* memory, uint32 alloc_size)
 	LOGI("mr_mem_free addr: 0x%08x, len: %d", memory, alloc_size);
 
 	munmap (memory, alloc_size);
-	munmap((void*)(0x81080000), getpagesize());
-
 	close(mem_fd);
 	mem_fd = -1;
 	gEmulatorParams.vm_mem_base = NULL;
@@ -293,7 +284,7 @@ int32 mr_mem_get(char** mem_base, uint32* mem_len){
 	gEmulatorParams.vm_mem_len = len;
 
 	if(showApiLog) 
-		LOGI("mr_mem_get addr:0x%08x len:%d", buffer, len);
+		LOGI("mr_mem_get addr:0x%p len:%d", (void *)buffer, len);
 
 	return MR_SUCCESS;
 }
@@ -378,7 +369,7 @@ void mr_printf(const char *format, ...)
 	va_end(params);
 
 	GBToUTF8String(printfBuf, utf8Buf, sizeof(utf8Buf));
-	LOGI(utf8Buf);
+	LOGI("%s", utf8Buf);
 }
 
 static void timer_sigroutine(int signo)
@@ -513,7 +504,7 @@ int32 mr_sleep(uint32 ms)
 	if(showApiLog) 
 		LOGI("mr_sleep(%d)", ms);
 
-	usleep(ms * 1000);
+	usleep(ms * 1000); //注意 usleep 传的是 微秒 ，所以要 *1000
 
 	return MR_SUCCESS;
 }
@@ -1734,7 +1725,7 @@ int32 mr_platEx(int32 code, uint8* input, int32 input_len, uint8** output, int32
 			*output = buf;//"2013/3/21 21:36";
 			*output_len = l + 1;
 
-			LOGI(buf);
+			LOGI("build time %s", buf);
 
 			return MR_SUCCESS;
 		}
@@ -1882,7 +1873,7 @@ int32 mr_platEx(int32 code, uint8* input, int32 input_len, uint8** output, int32
 		return MR_SUCCESS;
 
 	default:
-		LOGW("mr_platEx(code=%d, input=%#p, il=%d) not impl!", code, input, input_len);
+		LOGW("mr_platEx(code=%d, input=%p, il=%d) not impl!", code, (void *)input, input_len);
 		break;
 	}
 
