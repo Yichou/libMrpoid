@@ -6,14 +6,12 @@ import java.io.InputStream;
 
 import org.xmlpull.v1.XmlPullParser;
 
-import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.os.Vibrator;
 import android.util.TypedValue;
 import android.util.Xml;
 import android.view.MotionEvent;
@@ -89,6 +87,12 @@ public class Keypad extends Director implements ClickCallback {
 		public void resize(int neww, int newh);
 	}
 	
+	public static interface OnKeyEventListener {
+		public boolean onKeyDown(int key);
+
+		public boolean onKeyUp(int key);
+	}
+	
 	private static Keypad instance;
 	
 	private static final class InstanceHolder{
@@ -108,7 +112,7 @@ public class Keypad extends Director implements ClickCallback {
 	private FloatMenuButton floatMenuBtn;
 	private ActorGroup rootGroup;
 	private int mode;
-	private Vibrator vibrator;
+	private OnKeyEventListener mListener;
 	
 	
 	private Keypad() {
@@ -123,6 +127,10 @@ public class Keypad extends Director implements ClickCallback {
 	
 	public void setLayouter(KeyLayouter layouter) {
 		this.layouter = layouter;
+	}
+	
+	public void setOnKeyEventListener(OnKeyEventListener l) {
+		this.mListener = l;
 	}
 	
 	public int getMode() {
@@ -297,8 +305,6 @@ public class Keypad extends Director implements ClickCallback {
 		if(defKeyLayouter == null)
 			defKeyLayouter = new DefKeyLayouter(view.getResources());
 		setLayouter(defKeyLayouter);
-		
-		vibrator = (Vibrator)view.getContext().getSystemService(Context.VIBRATOR_SERVICE);
 	}
 	
 	@Override
@@ -314,17 +320,12 @@ public class Keypad extends Director implements ClickCallback {
 	}
 
 	@Override
-	public void onCLick(int key, boolean down) {
-		if(key == 1025){ //打开菜单
-			if(!down)
-				EmuStatics.emulatorActivity.openOptionsMenu();
-		}else {
-			if(Prefer.enableKeyVirb)
-				vibrator.vibrate(20);
-			
-			Emulator.getInstance().postMrpEvent(down? MrDefines.MR_KEY_PRESS : MrDefines.MR_KEY_RELEASE,
-					key, 
-					0);
+	public void onClick(int key, boolean down) {
+		if( mListener != null) {
+			if(down)
+				mListener.onKeyDown(key);
+			else
+				mListener.onKeyUp(key);
 		}
 	}
 }

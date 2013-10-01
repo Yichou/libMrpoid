@@ -45,8 +45,6 @@ public class EmulatorView extends SurfaceView implements
 	public EmulatorView(Context context) {
 		super(context);
 		
-		EmuStatics.emulatorView = this;
-		
 		getHolder().addCallback(this);
 //		getHolder().setFormat(PixelFormat.TRANSPARENT);
 		
@@ -92,11 +90,20 @@ public class EmulatorView extends SurfaceView implements
 	
 	public void setBgColor(int bgColor) {
 		this.backgroundColor = bgColor;
-		reDraw();
+		
+		myDraw();
 	}
 	
 	public int getBgColor() {
 		return backgroundColor;
+	}
+	
+	private void postDraw() {
+		if(emulator.isNativeThread()) {
+			myDraw();
+		} else {
+			drawHandler.sendEmptyMessage(MSG_ON_RESIZE);
+		}
 	}
 	
 	//---------- surfaceView -----------------------------------------------
@@ -105,8 +112,9 @@ public class EmulatorView extends SurfaceView implements
 		this.holder = holder;
 		
 		EmuLog.d(TAG, "surfaceChanged");
-		screen.setViewSize(width, height);
-		drawHandler.sendEmptyMessage(MSG_ON_RESIZE);
+		
+		screen.surfaceChanged(width, height);
+		postDraw();
 	}
 
 	private boolean surfaceCreated = false;
@@ -116,11 +124,14 @@ public class EmulatorView extends SurfaceView implements
 		EmuLog.d(TAG, "surfaceCreated");
 		
 		surfaceCreated = true;
-		drawThread = new HandlerThread("drawThread");
-		drawThread.start();
-		EmuLog.i(TAG, "drawThread id = " + drawThread.getId());
-		drawHandler = new Handler(drawThread.getLooper(), this);
-		drawHandler.sendEmptyMessage(MSG_ON_CREATE);
+		
+		if(!emulator.isNativeThread()) {
+			drawThread = new HandlerThread("drawThread");
+			drawThread.start();
+			EmuLog.i(TAG, "drawThread id = " + drawThread.getId());
+			drawHandler = new Handler(drawThread.getLooper(), this);
+			drawHandler.sendEmptyMessage(MSG_ON_CREATE);
+		}
 		
 		/**
 		 * 如果 surfaceCreated 是立即执行的会怎么样？
@@ -129,8 +140,8 @@ public class EmulatorView extends SurfaceView implements
 		 */
 		if(!emulator.isRunning()){
 			emulator.start();
-		}else {
-			drawHandler.sendEmptyMessage(MSG_ON_DRAW);
+		} else {
+			postDraw();
 		}
 	}
 
@@ -138,31 +149,22 @@ public class EmulatorView extends SurfaceView implements
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		EmuLog.d(TAG, "surfaceDestroyed");
 		surfaceCreated = false;
-		drawHandler.sendEmptyMessage(MSG_ON_DESTORY);
 		
-		drawThread.quit();
-		//此处应该 join 等待 drawThread 结束
-		try {
-			drawThread.join();
-			EmuLog.i(TAG, "drawThread join finish!");
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+		if(!emulator.isNativeThread()) {
+			drawThread.quit();
+			//此处应该 join 等待 drawThread 结束
+			try {
+				drawThread.join();
+				EmuLog.i(TAG, "drawThread join finish!");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
-	public void reDraw() {
-		if (!surfaceCreated ) //|| holder == null
-			return;
-		
-		drawHandler.sendEmptyMessage(MSG_ON_DRAW);
-	}
-	
-	public void flush(int x, int y, int w, int h) {
-		if (!surfaceCreated ) //|| holder == null
-			return;
-		
-		drawHandler.sendEmptyMessage(MSG_ON_DRAW);
-//		Message.obtain(drawHandler, 0x1001, new int[]{x, y, w, h}).sendToTarget();
+	public void flush() {
+		if (surfaceCreated )
+			postDraw();
 	}
 	
 	//--------------------------------------------------
@@ -216,11 +218,6 @@ public class EmulatorView extends SurfaceView implements
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		//传给 keypad
-//		if(keyboard.dispatchTouchEvent(event)){
-//			return true;
-//		}
-		
 		//触屏
 		screen.onTouchEvent(event);
 

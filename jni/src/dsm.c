@@ -372,44 +372,11 @@ void mr_printf(const char *format, ...)
 	LOGI("%s", utf8Buf);
 }
 
-static void timer_sigroutine(int signo)
-{
-	switch (signo)
-	{
-	case SIGALRM: 
-		if(gApiLogSw.showTimerLog)
-			LOGI("timer out");
-//		emu_requestCallback(CALLBACK_TIMER_OUT, 0);
-		vm_timeOut(NULL, NULL);
-		break;
-	}
-}
-
-/****************************************************************************
- 函数名:int32 mr_timerStart(uint16 t)
- 描  述:启动dsm定时器
- 参  数:t:定时器溢出时间(ms)
- 返  回:MR_SUCCESS,MR_FAILED
- ****************************************************************************/
 int32 mr_timerStart(uint16 t)
 {
-	if(gEmulatorCfg.useLinuxTimer) //只有 native 线程的时候才会开启
+	if(gEmulatorCfg.b_nativeThread) //只有 native 线程的时候才会开启
 	{
-		struct itimerval tick = {0};
-
-		/*当setitimer()所执行的timer时间到了会呼叫SIGALRM signal，
-		用signal()将要执行的 function 指定给SIGALRM。*/
-		signal(SIGALRM, timer_sigroutine);
-
-		// 设定第一次执行发出signal所延迟的时间
-		tick.it_value.tv_sec = t / 1000;
-		tick.it_value.tv_usec = t * 1000 % 1000000;
-
-		// ITIMER_REAL，表示以real-time方式减少timer，在timeout时会送出SIGALRM signal
-		if (setitimer(ITIMER_REAL, &tick, NULL) == -1){
-			LOGE("setitimer err! t=%d", t);
-			return MR_FAILED;
-		}
+		vm_timerStart(t);
 	}else{
 		emu_timerStart(t); //调java定时器
 	}
@@ -420,16 +387,14 @@ int32 mr_timerStart(uint16 t)
 	return MR_SUCCESS;
 }
 
-/*停止定时器。*/
 int32 mr_timerStop(void)
 {
 	if(gApiLogSw.showTimerLog)
 		LOGI("mr_timerStop");
 
-	if(gEmulatorCfg.useLinuxTimer)
+	if(gEmulatorCfg.b_nativeThread)
 	{
-		struct itimerval tick = {0};
-		setitimer(ITIMER_REAL, &tick, NULL);
+		vm_timerStop();
 	}else{	
 		emu_timerStop();
 	}

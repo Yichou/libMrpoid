@@ -6,77 +6,41 @@
 #include <signal.h>
 #include <errno.h>
 
+#include <lib/TimeUtils.h>
+#include <lib/JniUtils.h>
+#include <msgqueue.h>
+#include <message.h>
 
-//int vm_is_running = 0;
+
+pthread_t 	gvm_therad_id = 0;
 
 static char 		runMrpPath[DSM_MAX_FILE_LEN + 1];
-static pmsg_box_t	gs_pVMMsgBox;
-static int 			b_native_thread = FALSE;
-static pthread_t 	native_therad_id = 0;
-
-//static const int 	BUF_SIZE = 128;
-//static msg_block_t block_buf[BUF_SIZE];
-//static T_VMMSG_BODY body_buf[BUF_SIZE];
-//static int curIndex;
+static int 			b_native_thread = 1;
+static QUEUE 		mQueue;
+static int 			b_timer_started = 0;
+static int 			b_thread_running = 0;
 
 
-static void mainLoop();
+static void vm_loop();
+static void vm_thread_exit();
 
-static void delMsg(pmsg_block_t pMsg)
-{
-	free(pMsg->msg);
-	free(pMsg);
-}
-
-inline
-void vm_sendMsg_ex(E_VMMSG_ID id, int p0, int p1, int p2, void *data)
-{
-	msg_block_t *block = malloc(sizeof (msg_block_t));
-	T_VMMSG_BODY *body = malloc(sizeof (T_VMMSG_BODY));
-
-//	if(curIndex > BUF_SIZE)
-//		curIndex = 0;
-//
-//	msg_block_t *block = &block_buf[curIndex];
-//	T_VMMSG_BODY *body = &body_buf[curIndex];
-
-	body->id = id;
-	body->p0 = p0;
-	body->p1 = p1;
-	body->p2 = p2;
-	body->data = data;
-
-	block->msg = (void *)body;
-	msgbox_post(gs_pVMMsgBox, block);
-}
 
 //加载 MRP
 jint vm_loadMrp(JNIEnv * env, jobject self, jstring path)
 {
-	jniEnv = env;
-
 	const char *str = (*env)->GetStringUTFChars(env, path, JNI_FALSE);
 	if(str){
-//		char buf[DSM_MAX_FILE_LEN + 1] = {0};
-//
-//		sprintf(buf, "%%%s", str[0]=='/'? str+1 : str);
-
 		LOGD("vm_loadMrp entry:%s", str);
 		UTF8ToGBString(str, runMrpPath, sizeof(runMrpPath));
 
 		b_native_thread = FALSE;
-		gEmulatorCfg.useLinuxTimer = FALSE; //native 线程
-		gEmulatorCfg.b_nativeThread = FALSE;
+		gEmulatorCfg.b_nativeThread = 0;
 		if(!gEmulatorCfg.b_tsfInited)
-			gEmulatorCfg.androidDrawChar = TRUE;
-
-//		gEmulatorCfg.enableExram = 1;
-
+			gEmulatorCfg.androidDrawChar = 1;
 		showApiLog = 1;
 		gApiLogSw.showMrPrintf = 1;
 
-		setJniEnv(env);
-//		emu_attachJniEnv();
+		gMainJniEnv = env;
 
 		dsm_init();
 
@@ -97,53 +61,99 @@ jint vm_loadMrp(JNIEnv * env, jobject self, jstring path)
 }
 
 //----------- native thread -------------------------------
-static void native_mrp_exit()
+#define MSG_DEL(pmsg) \
+	if(pmsg->expand) free(pmsg->expand); free(pmsg);
+
+#define MSG_NEW \
+	(PT_MSG)malloc(sizeof(T_MSG))
+
+inline static void delMsg(ELEMENT *e)
 {
-	emu_detachJniEnv();
+	PT_MSG msg = (PT_MSG)e;
+	MSG_DEL(msg)
+}
 
-	//如果消息队列 还有消息 是不是就内存泄露了？
-	msgbox_clear(gs_pVMMsgBox, delMsg);
-	msgbox_delete(gs_pVMMsgBox);
+inline void vm_sendMsgDelay(int what, int arg0, int arg1, int arg2, void *expand, long ms)
+{
+	if(!b_thread_running)
+		return;
 
-	mr_stop();
-	//最后执行
-	mr_exit();
+	PT_MSG msg = MSG_NEW;
+
+	msg->what = what;
+	msg->arg0 = arg0;
+	msg->arg1 = arg1;
+	msg->arg2 = arg2;
+	msg->expand = expand;
+
+	enqueue(mQueue, (ELEMENT) msg, uptimems() + ms);
+}
+
+inline void vm_sendMsg(int what, int arg0, int arg1, int arg2, void *expand)
+{
+	vm_sendMsgDelay(what, arg0, arg1, arg2, expand, 0);
+}
+
+inline void vm_sendEmptyMsgDelay(int what, long ms)
+{
+	vm_sendMsgDelay(what, 0, 0, 0, NULL, ms);
+}
+
+inline void vm_sendEmptyMsg(int what)
+{
+	vm_sendMsgDelay(what, 0, 0, 0, NULL, 0);
 }
 
 //退出 mrp 线程
-static void thread_exit(int signo)
+static void sig_handle(int signo)
 {
 	if (signo == SIGKILL)
 	{
 		LOGI("thread_exit from SIGKILL");
-		native_mrp_exit();
-		//退出自己
+		vm_thread_exit();
+
+//	 * when call kill, thread maby blocked!
+//		so we call exit
 		pthread_exit(NULL);
 	}
 }
 
-static void native_mrp_run()
+static void * vm_thread_run(void *data)
 {
 	//捕获 SIGKILL 信号，用于强制退出
-	signal(SIGKILL, thread_exit);
+	signal(SIGKILL, sig_handle);
 
 	//获取 jni 环境
 	emu_attachJniEnv();
 
-	//创建消息处理器
-	gs_pVMMsgBox = msgbox_new(128);
-
-//	curIndex = 0;
-//	memset(block_buf, 0, sizeof(block_buf));
-//	memset(body_buf, 0, sizeof(body_buf));
-
-	mr_start_dsm(runMrpPath);
+	vm_sendEmptyMsg(VMMSG_ID_START);
 
 	//启动主循环
-	mainLoop();
+	vm_loop();
 
 	//运行到这里说明  MRP 结束了
-	native_mrp_exit();
+	vm_thread_exit();
+
+	gvm_therad_id = 0;
+}
+
+static void vm_thread_exit()
+{
+	LOGD("vm_thread_exit");
+
+	mr_stop();
+	//here we can't call mr_exit
+//	mr_exit();
+
+	dsm_reset();
+	emu_finish();
+	clqueue(mQueue, delMsg);
+	mQueue = NULL;
+
+	//at last
+	emu_detachJniEnv();
+
+	gEmulatorCfg.b_vm_running = 0;
 }
 
 /**
@@ -154,7 +164,7 @@ void vm_exit_foce(JNIEnv * env, jobject self)
 	if (b_native_thread)
 	{
 		LOGD("native force exit call");
-		int ret = pthread_kill(native_therad_id, SIGKILL);
+		int ret = pthread_kill(gvm_therad_id, SIGKILL);
 
 		if(ret == ESRCH)
 			LOGD("the specified thread did not exists or already quit\n");
@@ -163,7 +173,7 @@ void vm_exit_foce(JNIEnv * env, jobject self)
 		else
 			LOGD("the specified thread is alive\n");
 
-		pthread_join(native_therad_id, NULL); //等待 native thread 结束释放资源
+//		pthread_join(gvm_therad_id, NULL); //等待 native thread 结束释放资源
 	}
 }
 
@@ -171,28 +181,34 @@ jint vm_loadMrp_thread(JNIEnv * env, jobject self, jstring path)
 {
 	const char *str;
 
-	jniEnv = env;
-
 	str = (*env)->GetStringUTFChars(env, path, JNI_FALSE);
 	if (str)
 	{
-		char buf[DSM_MAX_FILE_LEN + 1];
+		LOGD("vm_loadMrp entry:%s", str);
+		UTF8ToGBString(str, runMrpPath, sizeof(runMrpPath));
 
-		sprintf(buf, "%%%s", str[0] == '/' ? str + 1 : str);
-		LOGD("vm_loadMrp_thread path:%s entry:%s", str, buf);
-		UTF8ToGBString(buf, runMrpPath, DSM_MAX_FILE_LEN);
+		b_native_thread = 1;
+		gEmulatorCfg.b_nativeThread = 1;
+		if (!gEmulatorCfg.b_tsfInited)
+			gEmulatorCfg.androidDrawChar = 1;
+		showApiLog = 1;
+		gApiLogSw.showMrPrintf = 1;
 
-		(*env)->ReleaseStringUTFChars(env, path, str);
+		gMainJniEnv = env;
+		dsm_init();
 
-		b_native_thread = TRUE;
-		gEmulatorCfg.useLinuxTimer = 1; //native 线程
-		gEmulatorCfg.b_nativeThread = TRUE;
+		gEmulatorCfg.b_vm_running = 1;
 
-		int ret;
-		ret = pthread_create(&native_therad_id, NULL, (void *)native_mrp_run, NULL);
+		//创建消息处理器
+		mQueue = new_queue();
+
+		//set can sendMsg flag
+		b_thread_running = 1;
+
+		//启动线程
+		int ret = pthread_create(&gvm_therad_id, NULL, (void *)vm_thread_run, "Hello");
 		if(ret != 0){
-			LOGE ("Create pthread error!");
-			exit (1);
+			jniThrowException(env, RUNTIME_EXCEPTION, "native create pthread FAIL!");
 		}
 
 		return 1;
@@ -207,7 +223,7 @@ void vm_pause(JNIEnv * env, jobject self)
 	if(gApiLogSw.showFW) LOGI("mr_pauseApp");
 
 	if(b_native_thread)
-		vm_sendMsg_ex(VMMSG_ID_PAUSE, 0,0,0,NULL);
+		vm_sendEmptyMsg(VMMSG_ID_PAUSE);
 	else
 		mr_pauseApp();
 }
@@ -218,19 +234,26 @@ void vm_resume(JNIEnv * env, jobject self)
 	if(gApiLogSw.showFW) LOGI("mr_resumeApp");
 
 	if(b_native_thread)
-		vm_sendMsg_ex(VMMSG_ID_RESUME, 0,0,0,NULL);
+		vm_sendEmptyMsg(VMMSG_ID_RESUME);
 	else
 		mr_resumeApp();
 }
 
 int32 mr_exit(void)
 {
-	LOGD("native mr_exit() call, CALL:emu_finish()");
+	LOGD("mr_exit() called by mythroad!");
 
-	dsm_reset();
-	emu_finish();
+	if(b_native_thread) {
+		vm_sendEmptyMsg(VMMSG_ID_STOP);
+		b_thread_running = 0;
 
-	gEmulatorCfg.b_vm_running = 0;
+		//maby need join
+//		pthread_join(gvm_therad_id, NULL);
+	} else {
+		dsm_reset();
+		emu_finish();
+		gEmulatorCfg.b_vm_running = 0;
+	}
 
 	return MR_SUCCESS;
 }
@@ -240,25 +263,19 @@ void vm_exit(JNIEnv * env, jobject self)
 {
 	if(gApiLogSw.showFW) LOGI("mr_stop");
 
-	LOGD("native exitMrp() call, CALL:mr_stop()");
+	LOGD("vm_exit() called by user!");
 
-	if(b_native_thread){
-		vm_sendMsg_ex(VMMSG_ID_STOP, 0,0,0,NULL);
-		pthread_join(native_therad_id, NULL); //等待 native thread 结束释放资源
-	}else {
+	if(b_native_thread) {
+		vm_sendEmptyMsg(VMMSG_ID_STOP);
+		b_thread_running = 0;
+
+//		pthread_join(gvm_therad_id, NULL);
+	} else {
 		//仅仅是通知调用 mrc_exit()
 		mr_stop();
-
 		//最后执行
 		mr_exit();
-
-		emu_detachJniEnv();
 	}
-}
-
-//后台运行MRP
-void vm_backrun(JNIEnv * env, jobject self)
-{
 }
 
 void vm_timeOut(JNIEnv * env, jobject self)
@@ -266,7 +283,7 @@ void vm_timeOut(JNIEnv * env, jobject self)
 	if(gApiLogSw.showTimerLog) LOGI("timeOut");
 
 	if(b_native_thread)
-		vm_sendMsg_ex(VMMSG_ID_MRTIMER, 0,0,0,NULL);
+		vm_sendEmptyMsg(VMMSG_ID_TIMER_OUT);
 	else
 		mr_timer();
 }
@@ -281,7 +298,7 @@ void vm_event(JNIEnv * env, jobject self, jint code, jint p0, jint p1)
 	}
 
 	if(b_native_thread)
-		vm_sendMsg_ex(VMMSG_ID_EVENT, code, p0, p1, NULL);
+		vm_sendMsg(VMMSG_ID_EVENT, code, p0, p1, NULL);
 	else
 		mr_event(code, p0, p1);
 }
@@ -335,35 +352,72 @@ jint vm_registerAPP(JNIEnv * env, jobject self,
 		return MR_FAILED;
 
 	jbyte* buf = malloc(len);
-	(*jniEnv)->GetByteArrayRegion(jniEnv, jba, 0, len, buf);
+	(*env)->GetByteArrayRegion(env, jba, 0, len, buf);
 
 	return mr_registerAPP((uint8 *)buf, (int32)len, (int32)index);
 }
 
-void mainLoop()
+static void timer_handle(int signo)
 {
-	LOGI("start mainLoop...");
+	if(signo == SIGALRM) {
+		vm_sendEmptyMsg(VMMSG_ID_TIMER_OUT);
+	}
+}
+
+void vm_timerStart(long ms)
+{
+	b_timer_started = 1;
+#if 0
+	vm_sendEmptyMsgDelay(VMMSG_ID_TIMER_OUT, ms);
+#else
+	struct itimerval tick = { 0 };
+
+	signal(SIGALRM, timer_handle);
+
+	// 设定第一次执行发出signal所延迟的时间
+	tick.it_value.tv_sec = ms / 1000;
+	tick.it_value.tv_usec = ms * 1000 % 1000000;
+
+	// ITIMER_REAL，表示以real-time方式减少timer，在timeout时会送出SIGALRM signal
+	if (setitimer(ITIMER_REAL, &tick, NULL) == -1) {
+		LOGE("setitimer err!");
+	}
+#endif
+}
+
+void vm_timerStop()
+{
+	b_timer_started = 0;
+#if 0
+#else
+	struct itimerval tick = {0};
+	setitimer(ITIMER_REAL, &tick, NULL);
+#endif
+}
+
+static void vm_loop()
+{
+	LOGD("start mainLoop...");
 
 	while(1)
 	{
-		pmsg_block_t msg = NULL;
-		PT_VMMSG_BODY body = NULL;
+		T_MSG *msg = (T_MSG *)dequeue(mQueue);
 
-		msgbox_fetch(gs_pVMMsgBox, &msg);
-		body = (PT_VMMSG_BODY)msg->msg;
+//		LOGI("get msg{%d,%d,%d,%d}", msg->what, msg->arg0, msg->arg1, msg->arg2);
 
-		switch(body->id)
+		switch(msg->what)
 		{
 		case VMMSG_ID_START:
+#ifdef DSM_FULL
 			mr_start_dsm(runMrpPath);
+#else
+			mr_start_dsmC("cfunction.ext", runMrpPath);
+#endif
 			break;
 
-		case VMMSG_ID_MRTIMER:
-			mr_timer();
-			break;
-
-		case VMMSG_ID_LOAD_MRP:
-			mr_start_dsm(runMrpPath);
+		case VMMSG_ID_TIMER_OUT:
+			if(b_timer_started)
+				mr_timer();
 			break;
 
 		case VMMSG_ID_PAUSE:
@@ -375,27 +429,49 @@ void mainLoop()
 			break;
 
 		case VMMSG_ID_EVENT:
-			mr_event(body->p0, body->p1, body->p2);
+			mr_event(msg->arg0, msg->arg1, msg->arg2);
 			break;
 
 		case VMMSG_ID_GETHOST:
-			((MR_GET_HOST_CB)mr_soc.callBack)(body->p0);
+			((MR_GET_HOST_CB)mr_soc.callBack)(msg->arg0);
+			break;
+
+		case VMMSG_ID_CALLBACK:
+			LOGD("callback addr=%p arg=%d", msg->arg1, msg->arg0);
+			((MR_CALLBACK)msg->arg1)(msg->arg0);
 			break;
 
 		case VMMSG_ID_STOP:
 		{
-			free(body);
-			free(msg);
-
+			MSG_DEL(msg);
 			goto end;
 		}
-
 		}
 
-		free(msg);
-		free(body);
+		MSG_DEL(msg);
 	}
 
 end:
-	LOGI("exit mainLoop...");
+	LOGD("exit mainLoop...");
+}
+
+extern int32 mr_getHostByName_block(const char *ptr);
+
+int vm_handle_emu_msg(int what, int p0, int p1)
+{
+	switch(what)
+	{
+	case EMU_MSG_GET_HSOT:
+	{
+		vm_sendMsg(VMMSG_ID_CALLBACK,
+				mr_getHostByName_block((const char *)p0),
+				p1, 0, NULL);
+		break;
+	}
+
+	default:
+		return 0;
+	}
+
+	return 1;
 }

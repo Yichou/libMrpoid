@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <asm-generic/fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
+
 
 #define USE_JBITMAP
 
@@ -20,10 +22,12 @@ T_EMULATOR_PARAMS 	gEmulatorParams;
 T_EMULATOR_CFG		gEmulatorCfg; 	//保存模拟器配置
 T_APILOG_SW			gApiLogSw; //API LOG 控制
 
+JNIEnv				*gMainJniEnv;
+JNIEnv				*gVmJniEnv;
+
 uint16				*cacheScreenBuffer;	//缓冲屏幕地址
 JavaVM				*gs_JavaVM;
-JNIEnv				*jniEnv;
-pmsg_box_t			g_pEmuMsgBox;
+
 int 				SCNW = 240;
 int 				SCNH = 320;
 int					showApiLog = TRUE;
@@ -50,6 +54,7 @@ static jmethodID	id_playSound, id_stopSound, id_musicLoadFile, id_musicCMD, id_s
 static jmethodID 	id_drawChar, id_measureChar;
 static jmethodID 	id_readTsfFont;
 static jmethodID 	id_callVoidMethod;
+static jmethodID 	id_sendMessage;
 
 
 //static jbyteArray 	jba_screenBuf;
@@ -63,39 +68,42 @@ static uint16		*realScreenBuffer;
 
 inline JNIEnv *getJniEnv()
 {
-	return jniEnv;
-}
-
-void setJniEnv(JNIEnv *p)
-{
-	jniEnv = p;
+	return (pthread_self() == gvm_therad_id)? gVmJniEnv : gMainJniEnv;
 }
 
 JNIEnv *emu_attachJniEnv()
 {
 	int status;
 
-	jniEnv = NULL;
-	status = (*gs_JavaVM)->GetEnv(gs_JavaVM, (void **)&jniEnv, JNI_VERSION_1_4);
+	LOGI("emu_attachJniEnv tid=%d", pthread_self());
+
+	gVmJniEnv = NULL;
+	status = (*gs_JavaVM)->GetEnv(gs_JavaVM, (void **)&gVmJniEnv, JNI_VERSION_1_4);
 	if(status < 0)
 	{
-		status = (*gs_JavaVM)->AttachCurrentThread(gs_JavaVM, &jniEnv, NULL);
+		status = (*gs_JavaVM)->AttachCurrentThread(gs_JavaVM, &gVmJniEnv, NULL);
 		if(status < 0)
 		{
 			return NULL;
 		}
+
+		LOGD("attach JniEnv suc env=%p, tid=%d", gVmJniEnv, pthread_self());
+
 		g_bAttatedT = TRUE;
 	}
 
-	return jniEnv;
+	return gVmJniEnv;
 }
 
 void emu_detachJniEnv()
 {
+	LOGI("emu_detachJniEnv tid=%d", pthread_self());
+
 	if(g_bAttatedT)
 	{
 		(*gs_JavaVM)->DetachCurrentThread(gs_JavaVM);
 		g_bAttatedT = FALSE;
+		gVmJniEnv = NULL;
 	}
 }
 
@@ -111,7 +119,7 @@ static void initJniId(JNIEnv * env, jobject self)
 	fid_memLen = (*env)->GetFieldID(env, cls, "N2J_memLen", "I");
 	fid_memLeft = (*env)->GetFieldID(env, cls, "N2J_memLeft", "I");
 
-	id_flush = (*env)->GetMethodID(env, cls, "N2J_flush", "(IIII)V");
+	id_flush = (*env)->GetMethodID(env, cls, "N2J_flush", "()V");
 	id_requestCallback = (*env)->GetMethodID(env, cls, "N2J_requestCallback", "(II)V");
 	id_timerStart = (*env)->GetMethodID(env, cls, "N2J_timerStart", "(S)V");
 	id_timerStop = (*env)->GetMethodID(env, cls, "N2J_timerStop", "()V");
@@ -127,6 +135,7 @@ static void initJniId(JNIEnv * env, jobject self)
 	id_readTsfFont = (*env)->GetMethodID(env, cls, "N2J_readTsfFont", "()[B");
 
 	id_callVoidMethod = (*env)->GetMethodID(env, cls, "N2J_callVoidMethod", "([Ljava/lang/String;)V");
+	id_sendMessage = (*env)->GetMethodID(env, cls, "N2J_sendMessage", "(IIII)V");
 
 	(*env)->DeleteLocalRef(env, cls);
 
@@ -164,7 +173,7 @@ void sevg_handler(int signo)
 			"不小心又崩溃了%>_<%"
 	};
 
-	N2J_callVoidMethodString(2, argv);
+	N2J_callVoidMethodString(2, (const char **)argv);
 
 	sleep(2);
 
@@ -174,11 +183,14 @@ void sevg_handler(int signo)
 //初始化模拟器  唯一实例
 void native_create(JNIEnv *env, jobject self, jobject mrpScreen, jobject emuAudio)
 {
-	LOGI("native_create");
+	LOGI("native_create env=%p, tid=%d", env, pthread_self());
 
+#if 0
 	signal(SIGSEGV, sevg_handler);
+#endif
 
-	jniEnv = env;
+	gMainJniEnv = env;
+	gvm_therad_id = 0;
 
 	//直接保存 obj 到 DLL 中的全局变量是不行的,应该调用以下函数:
 	obj_emulator = (*env)->NewGlobalRef(env, self);
@@ -196,7 +208,6 @@ void native_create(JNIEnv *env, jobject self, jobject mrpScreen, jobject emuAudi
 
 	gEmulatorCfg.androidDrawChar = FALSE;
 	gEmulatorCfg.useSysScreenbuf = FALSE;
-	gEmulatorCfg.useLinuxTimer = FALSE;
 	gEmulatorCfg.memSize = 4; //默认4M
 
 	tsf_init();
@@ -392,8 +403,6 @@ void native_setIntOptions(JNIEnv * env, jobject self, jstring key, jint value)
 			gApiLogSw.showFW = showApiLog && value;
 		}else if(strcasecmp(str, "enable_log_mrprintf") == 0){
 			gApiLogSw.showMrPrintf = showApiLog && value;
-		}else if(strcasecmp(str, "uselinuxTimer") == 0){
-			gEmulatorCfg.useLinuxTimer = value;
 		}else if(strcasecmp(str, "enableExram") == 0){
 			gEmulatorCfg.enableExram = value;
 		}else if(strcasecmp(str, "platform") == 0){
@@ -414,6 +423,14 @@ void native_getMemoryInfo(JNIEnv * env, jobject self)
 	(*env)->SetIntField(env, self, fid_memTop, (jint)top);
 	(*env)->SetIntField(env, self, fid_memLen, (jint)len);
 	(*env)->SetIntField(env, self, fid_memLeft, (jint)left);
+}
+
+int native_handleMessage(JNIEnv * env, jobject self,
+		jint what, jint p0, jint p1)
+{
+	LOGD("native handle msg %d,%p,%p", what, p0, p1);
+
+	return vm_handle_emu_msg(what, p0, p1);
 }
 
 ////////////////////////////////////////
@@ -441,38 +458,6 @@ jstring native_getAppName(JNIEnv * env, jobject self, jstring path)
 	}
 
 	return NULL;
-}
-
-void native_flushBitmap(JNIEnv * env, jobject self,
-		jobject bitmap, jint x, jint y, jint w, jint h)
-{
-//#ifdef USE_JBITMAP
-//	AndroidBitmapInfo info;
-//	void* pixels;
-//	int ret;
-//
-//	if ((ret = AndroidBitmap_getInfo(jniEnv, bitmap, &info)) < 0) {
-//		LOGE("AndroidBitmap_getInfo() failed ! error=%d", ret);
-//		return;
-//	}
-//	if (info.format != ANDROID_BITMAP_FORMAT_RGB_565) {
-//		LOGE("Bitmap format is not RGB_565 !");
-//		return;
-//	}
-//	if ((ret = AndroidBitmap_lockPixels(jniEnv, bitmap, &pixels)) < 0) {
-//		LOGE("AndroidBitmap_lockPixels() failed ! error=%d", ret);
-//	}
-//
-//	//终究是有问题的
-//
-//	//刷新到屏幕
-//	uint16 *p = (uint16 *) pixels;
-//	int i;
-//	for (i = y; i <= y1; i++)
-//		memcpy((p + (sw * i) + x), (data + (sw * i) + x), w * 2);
-//
-//	AndroidBitmap_unlockPixels(jniEnv, bitmap);
-//#endif
 }
 
 ///////////// N->J /////////////////////////////////////////////
@@ -535,7 +520,7 @@ void emu_bitmapToscreen(uint16* data, int x, int y, int w, int h)
 	clip_rect(&x, &y, &x1, &y1, r, b);
 	w = x1-x+1, h = y1-y+1;
 	
-	getJniEnv();
+	JNIEnv *jniEnv = getJniEnv();
 
 	(*jniEnv)->MonitorEnter(jniEnv, obj_realBitmap);
 
@@ -547,25 +532,41 @@ void emu_bitmapToscreen(uint16* data, int x, int y, int w, int h)
 
 	(*jniEnv)->MonitorExit(jniEnv, obj_realBitmap);
 
-	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_flush, x, y, w, h);
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_flush);
 }
 
 int32 emu_timerStart(uint16 t)
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emulator, id_timerStart, t);
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_timerStart, t);
 
 	return MR_SUCCESS;
 }
 
 int32 emu_timerStop()
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emulator, id_timerStop);
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_timerStop);
 
 	return MR_SUCCESS;
 }
 
+void emu_sendMessage(int what, int p0, int p1, int delay)
+{
+	LOGI("emu_sendMessage %d", what);
+
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_sendMessage,
+			what, p0, p1, delay);
+}
+
 void N2J_callVoidMethodString(int argc, const char *argv[])
 {
+	JNIEnv *jniEnv = getJniEnv();
+
 	jclass clsString = (*jniEnv)->FindClass(jniEnv, "java/lang/String");
 	jobjectArray arr = (*jniEnv)->NewObjectArray(jniEnv, argc, clsString, NULL);
 	if(arr != NULL){
@@ -584,13 +585,13 @@ void emu_showDlg(const char *msg)
 	if(!msg) return;
 
 	jstring jstr = NULL;
+	JNIEnv *jniEnv = getJniEnv();
 
 	static char buf[256];
 	GBToUTF8String((uint8 *)msg, (uint8 *)buf, sizeof(buf));
 	jstr = (*jniEnv)->NewStringUTF(jniEnv, buf);
 	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_showDlg, jstr);
 }
-
 
 typedef struct {
 	char *buf_title;
@@ -604,10 +605,10 @@ int32 emu_showEdit(const char * title, const char * text, int type, int max_size
 	char *buf;
 	int l;
 	T_MR_EDIT *edit = malloc(sizeof(T_MR_EDIT));
+	JNIEnv *jniEnv = getJniEnv();
 
-	if(showApiLog) LOGI("emu_showEdit");
-
-	getJniEnv();
+	if(showApiLog)
+		LOGI("emu_showEdit");
 
 	memset(edit, 0, sizeof(T_MR_EDIT));
 	if(title){
@@ -646,9 +647,12 @@ int32 emu_showEdit(const char * title, const char * text, int type, int max_size
  */
 const char* emu_getEditInputContent(int32 editHd)
 {
-	if(!editHd) return NULL;
+	if(!editHd)
+		return NULL;
 
-	jstring text = (jstring)(*getJniEnv())->GetObjectField(jniEnv, obj_emulator, fid_editInputContent);
+	JNIEnv *jniEnv = getJniEnv();
+
+	jstring text = (jstring)(*jniEnv)->GetObjectField(jniEnv, obj_emulator, fid_editInputContent);
 	T_MR_EDIT *edit = (PT_MR_EDIT)editHd;
 
 	if(text != NULL){
@@ -694,12 +698,15 @@ void emu_releaseEdit(int32 editHd)
 
 void emu_finish()
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emulator, id_finish);
+	JNIEnv *jniEnv = getJniEnv();
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_finish);
 }
 
 int emu_getIntSysinfo(const char * name)
 {
-	int i = (*getJniEnv())->CallIntMethod(jniEnv, obj_emulator,
+	JNIEnv *jniEnv = getJniEnv();
+
+	int i = (*jniEnv)->CallIntMethod(jniEnv, obj_emulator,
 			id_getIntSysinfo,
 			(*jniEnv)->NewStringUTF(jniEnv, name));
 	return i;
@@ -707,17 +714,23 @@ int emu_getIntSysinfo(const char * name)
 
 void emu_getHostByName(const char * name)
 {
-	if(!name) return;
+	if(!name)
+		return;
 
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emulator, id_getHostByName,
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_getHostByName,
 			(*jniEnv)->NewStringUTF(jniEnv, name));
 }
 
 void emu_setStringOptions(const char *key, const char *value)
 {
-	if(!key || !value) return;
+	if(!key || !value)
+		return;
 
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emulator, id_setStringOptions,
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emulator, id_setStringOptions,
 			(*jniEnv)->NewStringUTF(jniEnv, key),
 			(*jniEnv)->NewStringUTF(jniEnv, value)
 			);
@@ -725,7 +738,9 @@ void emu_setStringOptions(const char *key, const char *value)
 
 const char *emu_getStringSysinfo(const char * name)
 {
-	jstring text = (jstring)(*getJniEnv())->CallObjectMethod(jniEnv, obj_emulator,
+	JNIEnv *jniEnv = getJniEnv();
+
+	jstring text = (jstring)(*jniEnv)->CallObjectMethod(jniEnv, obj_emulator,
 		id_getStringSysinfo,
 		(*jniEnv)->NewStringUTF(jniEnv, name));
 
@@ -788,6 +803,7 @@ int emu_sendSms(char *pNumber, char *pContent, int32 flags)
 	LOGD("emu_sendSms, msg addr: %s", pNumber);
 
 	jstring num, msg;
+	JNIEnv *jniEnv = getJniEnv();
 
 	num = (*jniEnv)->NewStringUTF(jniEnv, pNumber);
 
@@ -826,6 +842,7 @@ int emu_sendSms(char *pNumber, char *pContent, int32 flags)
  */
 void N2J_readTsfFont(uint8 **outbuf, int32 *outlen)
 {
+	JNIEnv *jniEnv = getJniEnv();
 	jbyte *buf = NULL;
 	jint len = 0;
 	jbyteArray jba = (*jniEnv)->CallObjectMethod(jniEnv, obj_emulator, id_readTsfFont);
@@ -873,14 +890,16 @@ static int rgb565_to_rgb888(int p)
 
 void emu_drawChar(uint16 ch, int x, int y, uint16 color)
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_mrpScreen, id_drawChar, ch, x, y, rgb565_to_rgb888((int)color));
+	JNIEnv *jniEnv = getJniEnv();
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_mrpScreen, id_drawChar, ch, x, y, rgb565_to_rgb888((int)color));
 }
 
 void emu_measureChar(uint16 ch, int *w, int *h)
 {
 	jint ret;
+	JNIEnv *jniEnv = getJniEnv();
 
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_mrpScreen, id_measureChar, ch);
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_mrpScreen, id_measureChar, ch);
 	ret = (*jniEnv)->GetIntField(jniEnv, obj_emulator, fid_charW);
 	if(w != NULL)
 		*w = ret;
@@ -894,7 +913,9 @@ void emu_measureChar(uint16 ch, int *w, int *h)
 //-------------- Begin EmuAudio.java ------------------------------------------------
 void emu_palySound(const char *path, int loop)
 {
-	jstring jspath = (*getJniEnv())->NewStringUTF(jniEnv, path);
+	JNIEnv *jniEnv = getJniEnv();
+	jstring jspath = (*jniEnv)->NewStringUTF(jniEnv, path);
+
 	(*jniEnv)->CallVoidMethod(jniEnv, obj_emuAudio,
 					id_playSound,
 					jspath, loop);
@@ -902,33 +923,43 @@ void emu_palySound(const char *path, int loop)
 
 void emu_stopSound(int id)
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emuAudio,
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emuAudio,
 						id_stopSound);
 }
 
 void emu_musicLoadFile(const char *path)
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emuAudio,
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emuAudio,
 							id_musicLoadFile,
 							(*jniEnv)->NewStringUTF(jniEnv, path));
 }
 
 int emu_musicCMD(int cmd, int arg0, int arg1)
 {
-	return (*getJniEnv())->CallIntMethod(jniEnv, obj_emuAudio,
+	JNIEnv *jniEnv = getJniEnv();
+
+	return (*jniEnv)->CallIntMethod(jniEnv, obj_emuAudio,
 								id_musicCMD,
 								cmd, arg0, arg1);
 }
 
 void emu_startShake(int ms)
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emuAudio,
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emuAudio,
 				id_startShake, ms);
 }
 
 void emu_stopShake()
 {
-	(*getJniEnv())->CallVoidMethod(jniEnv, obj_emuAudio,
+	JNIEnv *jniEnv = getJniEnv();
+
+	(*jniEnv)->CallVoidMethod(jniEnv, obj_emuAudio,
 				id_stopShake);
 }
 
@@ -937,14 +968,14 @@ void emu_stopShake()
 
 ///////////////////////////////////////
 /* On Android NDK, rand is inlined function, but postproc needs rand symbol */
-#if defined(__ANDROID__)
-#define rand __rand
-#include <stdlib.h>
-#include "dsm.h"
-#undef rand
-
-extern int rand(void)
-{
-  return __rand();
-}
-#endif
+//#if defined(__ANDROID__)
+//#define rand __rand
+//#include <stdlib.h>
+//#include "dsm.h"
+//#undef rand
+//
+//extern int rand(void)
+//{
+//  return __rand();
+//}
+//#endif

@@ -3,8 +3,6 @@ package com.mrpoid.app;
 import java.io.File;
 import java.util.List;
 import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -22,6 +20,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Vibrator;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.telephony.SmsManager;
@@ -50,12 +49,17 @@ import com.mrpoid.core.EmuUtils;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.EmulatorView;
 import com.mrpoid.core.Keypad;
+import com.mrpoid.core.Keypad.OnKeyEventListener;
 import com.mrpoid.core.KeypadView;
 import com.mrpoid.core.MrDefines;
 import com.mrpoid.core.MrpFile;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
 import com.mrpoid.keysprite.ChooserFragment;
+import com.mrpoid.keysprite.KeyEventListener;
+import com.mrpoid.keysprite.KeySprite;
+import com.mrpoid.keysprite.OnChooseLitener;
+import com.mrpoid.keysprite.Sprite;
 import com.yichou.sdk.SdkUtils;
 
 /**
@@ -74,7 +78,13 @@ public class EmulatorActivity extends FragmentActivity implements
 	
 	static final int MSG_ID_SHOWEDIT = 1001,
 		MSG_ID_UPDATE = 1002,
+		MSG_ID_KEY_DOWN = 1012,
+		MSG_ID_KEY_UP = 1003,
+		MSG_ID_UPDATE_INFO_TEXT = 1004,
+		
 		MSG_ID_MAX = 1100;
+	
+	static final int INFO_TYPE_KEY_SPRITE = 1001;
 	
 	static final int REQ_SHOWEDIT = 1001,
 		REQ_GET_IMAGE = 1002;
@@ -87,7 +97,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		DLG_LAST = 1103;
 	
 	
-	private TextView tvMemory;
+	private TextView tvMemory, tvInfo;
 	private EmulatorView emulatorView;
 	private Emulator emulator;
 	public Handler handler;
@@ -96,15 +106,42 @@ public class EmulatorActivity extends FragmentActivity implements
 	private BroadcastReceiver mReceiver;
 	private ViewGroup continer;
 	private KeypadView padView;
+	private boolean mPaused;
+	private Vibrator vibrator;
 	
 	
 	@Override
 	public boolean handleMessage(Message msg) {
 		switch (msg.what) {
-		case MSG_ID_UPDATE:
+		case MSG_ID_UPDATE: {
+			if(mPaused)
+				break;
+			
 			updateMemInfo();
 			handler.sendEmptyMessageDelayed(MSG_ID_UPDATE, 1000);
 			break;
+		}
+		
+		case MSG_ID_KEY_DOWN:
+			emulator.postMrpEvent(MrDefines.MR_KEY_PRESS, msg.arg1, 0);
+			break;
+			
+		case MSG_ID_KEY_UP:
+			emulator.postMrpEvent(MrDefines.MR_KEY_RELEASE, msg.arg1, 0);
+			break;
+			
+		case MSG_ID_UPDATE_INFO_TEXT: {
+			String text = msg.obj.toString();
+			if(text == null)
+				tvInfo.setVisibility(View.INVISIBLE);
+			else {
+				if(tvInfo.getVisibility() != View.VISIBLE)
+					tvInfo.setVisibility(View.VISIBLE);
+				tvInfo.setText(text);
+			}
+			
+			break;
+		}
 			
 		default:
 			return false;
@@ -115,14 +152,17 @@ public class EmulatorActivity extends FragmentActivity implements
 	
 	@Override
 	public void onClick(View v) {
+		if(v.getId() == R.id.tv_info) {
+			if(v.getTag().equals(INFO_TYPE_KEY_SPRITE)){
+				stopKeySprite();
+			}
+		}
 	}
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		EmuLog.i(TAG, "onCreate");
 		super.onCreate(savedInstanceState);
-		
-		EmuStatics.emulatorActivity = this;
 		
 		getWindow().requestFeature(Window.FEATURE_NO_TITLE);//去掉标题栏
 		if(!Prefer.showStatusBar)
@@ -135,7 +175,8 @@ public class EmulatorActivity extends FragmentActivity implements
 		
 		handler = new Handler(this);
 		inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-
+		vibrator = (Vibrator)getSystemService(Context.VIBRATOR_SERVICE);
+		
 		emulator = Emulator.getInstance(this);
 		emulator.setEmulatorActivity(this);
 		
@@ -149,27 +190,46 @@ public class EmulatorActivity extends FragmentActivity implements
 		Keypad.loadBmp(getResources());
 		padView = new KeypadView(this);
 		continer.addView(padView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+		Keypad.getInstance().setOnKeyEventListener(mKeyEventListener);
 		
+		//短信模块初始化
+		smsInit();
+
 		if(Prefer.showMemInfo){
 			showMenInfo();
 		}
 
-		//短信模块初始化
-		smsInit();
-		
-		EmuStatics.setAppContext(getApplicationContext());
+		{
+			tvInfo = new TextView(this);
+			tvInfo.setBackgroundColor(0x80000000);
+			tvInfo.setTextColor(0xfff0f0f0);
+			tvInfo.setGravity(Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL);
+			tvInfo.setSingleLine(true);
+			tvInfo.setVisibility(View.INVISIBLE);
+			tvInfo.setId(R.id.tv_info);
+			tvInfo.setOnClickListener(this);
+			
+			int padding = getResources().getDimensionPixelSize(R.dimen.dp5);
+			tvInfo.setPadding(padding, padding, padding, padding);
+			continer.addView(tvInfo, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+		}
 	}
 	
 	@Override
 	protected void onPause() {
 		EmuLog.i(TAG, "onPause");
 
+		mPaused = true;
+		
 		SdkUtils.onPause(this);
 		mSmsReceiver.unRegister();
 		emulator.pause();
 		
-		if (!isFinishing())
+		if (!isFinishing()) {
 			entryBackground();
+		} else {
+			Keypad.getInstance().setOnKeyEventListener(null);
+		}
 
 		super.onPause();
 	}
@@ -178,11 +238,13 @@ public class EmulatorActivity extends FragmentActivity implements
 	protected void onResume() {
 		EmuLog.i(TAG, "onResume");
 
+		mPaused = false;
 		backFroground();
-		
 		SdkUtils.onResume(this);
 		emulator.resume();
 		mSmsReceiver.register();
+		if(Prefer.showMemInfo)
+			handler.sendEmptyMessageDelayed(MSG_ID_UPDATE, 1000);
 		
 		super.onResume();
 	}
@@ -199,9 +261,6 @@ public class EmulatorActivity extends FragmentActivity implements
 		Keypad.releaseBmp();
 		unregisterReceiver(mReceiver);
 		
-		EmuStatics.emulatorActivity = null;
-		EmuStatics.emulatorView = null;
-
 		super.onDestroy(); 
 	}
 	
@@ -251,7 +310,7 @@ public class EmulatorActivity extends FragmentActivity implements
 				MrpFile mrpFile = new MrpFile(path);
 				mrpFile.setAppName("冒泡社区");
 				Emulator.getInstance().setRunMrp(curMrpPath, mrpFile);
-			}else {
+			} else {
 				finish();
 			}
 		} else {
@@ -344,6 +403,7 @@ public class EmulatorActivity extends FragmentActivity implements
 	public boolean onMenuItemSelected(int featureId, android.view.MenuItem item) {
 		if (item.getItemId() == R.id.mi_close) {
 			emulator.stop();
+			finish();
 		} else if (item.getItemId() == R.id.mi_scnshot) {
 			emulator.getScreen().screenShot(this);
 		} else if (item.getItemId() == R.id.mi_foce_close) {
@@ -463,7 +523,7 @@ public class EmulatorActivity extends FragmentActivity implements
 	                public void onClick(DialogInterface dialog, int whichButton) {
 	                	MrpScreen.parseScaleMode(items[tmpChoice]);
 	                	emulator.getScreen().initScale();
-	                	emulatorView.reDraw();
+	                	emulatorView.flush();
 	                }
 	            })
 	            .setNegativeButton(R.string.cancel, null)
@@ -567,10 +627,51 @@ public class EmulatorActivity extends FragmentActivity implements
 		"按键精灵"
 	};
 	
+	private KeySprite mKeySprite;
+	
+	private void stopKeySprite() {
+		if(mKeySprite != null){
+			mKeySprite.stop();
+			mKeySprite = null;
+			tvInfo.setVisibility(View.INVISIBLE);
+		}
+	}
+	
+	private void runKeySprite(KeySprite sprite) {
+		mKeySprite = sprite;
+		tvInfo.setTag(INFO_TYPE_KEY_SPRITE);
+		
+		sprite.run(new KeyEventListener() {
+			
+			@Override
+			public void onKeyUp(int key, Sprite sprite) {
+				handler.obtainMessage(MSG_ID_KEY_UP, key, 0).sendToTarget();
+				handler.obtainMessage(MSG_ID_UPDATE_INFO_TEXT, sprite.toString()).sendToTarget();
+			}
+			
+			@Override
+			public void onKeyDown(int key, Sprite sprite) {
+				handler.obtainMessage(MSG_ID_KEY_DOWN, key, 0).sendToTarget();
+				handler.obtainMessage(MSG_ID_UPDATE_INFO_TEXT, sprite.toString()).sendToTarget();
+			}
+		});
+	}
+	
 	private void runTool(int index) {
 		switch (index) {
 		case 0: {
-			showFragmentDialog(new ChooserFragment());
+			showFragmentDialog(new ChooserFragment().setOnChooseLitener(new OnChooseLitener() {
+				
+				@Override
+				public void onChoose(Object object) {
+					runKeySprite((KeySprite) object);
+				}
+				
+				@Override
+				public void onCancel() {
+					
+				}
+			}));
 			break;
 		}
 		}
@@ -698,6 +799,30 @@ public class EmulatorActivity extends FragmentActivity implements
 			.create()
 			.show();
 	}
+	
+	private final OnKeyEventListener mKeyEventListener = new OnKeyEventListener() {
+		
+		@Override
+		public boolean onKeyUp(int key) {
+			if(key == 1025){ //打开菜单
+				openOptionsMenu();
+			} else {
+				Emulator.getInstance().postMrpEvent(MrDefines.MR_KEY_RELEASE, key, 0);
+			}
+			
+			return true;
+		}
+		
+		@Override
+		public boolean onKeyDown(int key) {
+			if(Prefer.enableKeyVirb)
+				vibrator.vibrate(20);
+			
+			Emulator.getInstance().postMrpEvent(MrDefines.MR_KEY_PRESS, key, 0);
+			
+			return false;
+		}
+	};
 	
 	private WindowManager wm;
     private WindowManager.LayoutParams wmParams = new WindowManager.LayoutParams();

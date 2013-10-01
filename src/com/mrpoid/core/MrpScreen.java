@@ -20,6 +20,7 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Environment;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
 import android.widget.Toast;
 
 /**
@@ -33,6 +34,7 @@ public class MrpScreen {
 	private static final String TEST = "1.你好，Hellogfa"; 
 	
 	private Emulator emulator;
+	private SurfaceHolder mHolder;
 	
 	public Bitmap bitmap, cacheBitmap;
 	public Canvas cacheCanvas = new Canvas();
@@ -85,6 +87,7 @@ public class MrpScreen {
 		}
 	}
 	
+	float lastX, lastY;
 	public void onTouchEvent(MotionEvent event) {
 		float fx =  event.getX();
 		float fy =  event.getY();
@@ -95,11 +98,26 @@ public class MrpScreen {
 			
 			switch (event.getAction()) {
 			case MotionEvent.ACTION_DOWN:
+				lastX = fx;
+				lastY = fy;
 				emulator.postMrpEvent(MrDefines.MR_MOUSE_DOWN, x, y);
 				break;
-			case MotionEvent.ACTION_MOVE:
-				emulator.postMrpEvent(MrDefines.MR_MOUSE_MOVE, x, y);
+				
+			case MotionEvent.ACTION_MOVE: {
+				float dx = lastX-fx;
+				float dy = lastY-fy;
+				float sx = scaleX*5;
+				float sy = scaleY*6;
+				
+				if(dx>sx || dx<-sx ||dy>sy || dy<-sy){
+					emulator.postMrpEvent(MrDefines.MR_MOUSE_MOVE, x, y);
+					lastX = fx;
+					lastY = fy;
+				}
+				
 				break;
+			}
+				
 			case MotionEvent.ACTION_UP:
 				emulator.postMrpEvent(MrDefines.MR_MOUSE_UP, x, y);
 				break;
@@ -152,6 +170,31 @@ public class MrpScreen {
 		setMrpScreenSize(screenW, screenH);
 		clear(Color.WHITE);
 	}
+//	
+//	public void attachSurface(EmulatorView surface) {
+//		mHolder = surface.getHolder();
+//		
+//		System.out.println("surface attached!");
+//	}
+//	
+//	public void datchSurface() {
+//		mHolder = null;
+//	}
+//	
+//	private void N2J_flush() {
+//		if(mHolder == null)
+//			return;
+//		
+//		Canvas c = mHolder.lockCanvas();
+//		c.drawColor(Color.GRAY);
+//		
+//		float left = 100;
+//		float t = 100;
+//		
+//		c.drawBitmap(bitmap, left, t, null);
+//		
+//		mHolder.unlockCanvasAndPost(c);
+//	}
 	
 	/**
 	 * emulatorView 的尺寸改变后应该重新设置屏幕缩放比例
@@ -159,7 +202,7 @@ public class MrpScreen {
 	 * @param width
 	 * @param height
 	 */
-	public void setViewSize(int width, int height) {
+	public void surfaceChanged(int width, int height) {
 		viewW = width;
 		viewH = height;
 		initScale();
@@ -419,7 +462,5 @@ public class MrpScreen {
 	
 	public native void native_lockBitmap();
 	public native void native_unLockBitmap();
-	public native void hello();
 	public native void native_reset(Bitmap cache, Bitmap real, int w, int h);
-	public native void native_flushBitmap(Bitmap dstBitmap, int x, int y, int w, int h);
 }

@@ -73,7 +73,7 @@
         <activity
             android:name="com.mrpoid.app.EmuPreferenceActivity"
             android:label="@string/settings"
-            android:theme="@style/emu_theme_light" >
+            android:theme="@style/emu_theme_preference" >
         </activity>
         <activity
             android:name="com.mrpoid.keysprite.KeySpriteEditorActivity"

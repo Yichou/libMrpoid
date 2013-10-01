@@ -10,4 +10,6 @@
     <style name="emu_theme_black_notitle" parent="android:Theme.Black.NoTitleBar" />
 
     <style name="emu_theme_wallpaper_notitle" parent="android:Theme.Wallpaper.NoTitleBar" />
+
+    <style name="emu_theme_preference" parent="emu_theme_black" />
 </resources>

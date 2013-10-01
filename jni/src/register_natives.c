@@ -12,10 +12,6 @@
 #define NELEM(x) ((int)(sizeof(x) / sizeof((x)[0])))
 #endif
 
-static void hello()
-{
-	LOGI("hello native world");
-}
 
 static const char *s_class_path_name = "com/mrpoid/core/Emulator";
 
@@ -32,6 +28,7 @@ static JNINativeMethod s_methods[] = {
 	{"native_setStringOptions", "(Ljava/lang/String;Ljava/lang/String;)V", (void*) native_setStringOptions},
 	{"native_callback", "(II)V", (void*) native_callback},
 	{"native_getMemoryInfo", "()V", (void*) native_getMemoryInfo},
+	{"native_handleMessage", "(III)I", (void*) native_handleMessage},
 
 	{"vm_loadMrp", "(Ljava/lang/String;)I", (void*) vm_loadMrp},
 	{"vm_loadMrp_thread", "(Ljava/lang/String;)I", (void*) vm_loadMrp_thread},
@@ -46,8 +43,6 @@ static JNINativeMethod s_methods[] = {
 	{"vm_registerAPP", "([BII)I", (void*) vm_registerAPP},
 
 	{"native_getAppName", "(Ljava/lang/String;)Ljava/lang/String;", (void*)native_getAppName},
-
-	{"hello", "()V", (void*) hello}
 };
 
 static const char *s_class_path_name2 = "com/mrpoid/core/MrpScreen";
@@ -55,8 +50,6 @@ static JNINativeMethod s_methods2[] = {
 	{"native_reset", "(Landroid/graphics/Bitmap;Landroid/graphics/Bitmap;II)V", (void*) native_mrpScreenRest},
 	{"native_unLockBitmap", "()V", (void*) native_mrpScreen_unLockBitmap},
 	{"native_lockBitmap", "()V", (void*) native_mrpScreen_lockBitmap},
-
-	{"hello", "()V", (void*) hello}
 };
 
 static int register_native_methods(JNIEnv* env,

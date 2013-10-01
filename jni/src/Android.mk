@@ -3,7 +3,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := emulator
+LOCAL_MODULE := mrpoid
 
 LOCAL_STATIC_LIBRARIES := mr_vm_mini
 
@@ -15,14 +15,15 @@ LOCAL_CFLAGS := -DDSM_MINI
 
 LOCAL_SRC_FILES := emulator.c \
 	dsm.c \
-	net.c \
+	network.c \
 	utils.c \
 	vm.c \
+	msgqueue.c \
 	register_natives.c \
 	encode.c \
 	font/tsffont.c \
-	lib/timer.c \
-	lib/msgbox.c
+	lib/TimeUtils.c \
+	lib/JniUtils.c
 
 include $(BUILD_SHARED_LIBRARY)
 

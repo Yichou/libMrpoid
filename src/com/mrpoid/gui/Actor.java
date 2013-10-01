@@ -12,7 +12,7 @@ import android.graphics.Paint;
  */
 public abstract class Actor {
 	public static interface ClickCallback {
-		public void onCLick(int key, boolean down);
+		public void onClick(int key, boolean down);
 	}
 	
 	public float x, y, w, h;
@@ -117,7 +117,7 @@ public abstract class Actor {
 	
 	protected void clicked(int key, boolean down) {
 		if(clickCallback != null){
-			clickCallback.onCLick(key, down);
+			clickCallback.onClick(key, down);
 		}
 	}
 	

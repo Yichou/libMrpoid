@@ -15,7 +15,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Handler.Callback;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.TelephonyManager;
@@ -52,11 +51,8 @@ public class Emulator implements Callback {
 	private String runMrpPath;
 	private Keypad mKeypad;
 	
-	private int threadMod;
-	private HandlerThread thread;
-	private EmuEventHandler eventHandler;
+	private int threadMod = THREAD_MAIN;
 	private boolean running;
-
 	
 	public int N2J_charW, N2J_charH; //这2个值保存 每次measure的结果，底层通过获取这2个值来获取尺寸
 	public int N2J_memLen, N2J_memLeft, N2J_memTop;
@@ -69,20 +65,13 @@ public class Emulator implements Callback {
 					 STA_SHOWEDIT = 1,
 					 STA_PAUSE = 2;
 	
-	private static final int MSG_TIMER_OUT = 121,
-		MSG_CALLBACK = 122,
-		MSG_MR_SMS_GET_SC = 123;
+	private static final int MSG_TIMER_OUT = 0x0001,
+		MSG_CALLBACK = 0x0002,
+		MSG_MR_SMS_GET_SC = 0x0003;
 	
 	
 	static {
-		try {
-			EmuLog.d(TAG, "try to load libemulator.so");
-			
-			System.loadLibrary("emulator"); 
-		} catch (Exception e) {
-			EmuLog.e(TAG, "Can not load library:" + e.toString()); 
-			System.exit(0);
-		}
+		System.loadLibrary("mrpoid"); 
 	}
 	
 	/**
@@ -146,16 +135,15 @@ public class Emulator implements Callback {
 	
 	/////////////////////////////////////////////////////////
 	private Emulator(final Context context) {
-		EmuLog.i(TAG, "Emulator(Context context)");
-		
 		this.context = context.getApplicationContext();
 		
 		screen = new MrpScreen(this);
 		audio = new EmuAudio(context, this);
-		
 		try {
+			EmuLog.i(TAG, "call native_create tid=" + Thread.currentThread().getId());
 			native_create(screen, audio);
 		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		
 		//起线程获取短信中心
@@ -164,7 +152,7 @@ public class Emulator implements Callback {
 			public void run() {
 				String N2J_smsCenter = SmsUtil.getSmsCenter(context);
 				native_setStringOptions("smsCenter", N2J_smsCenter);
-				EmuLog.i(TAG, "smsCenter = " + N2J_smsCenter);
+				EmuLog.i(TAG, "smsCenter: " + N2J_smsCenter);
 			}
 		}).start();
 	}
@@ -234,19 +222,25 @@ public class Emulator implements Callback {
 	}
 	
 	public static final int THREAD_MAIN=0,
-		THREAD_JAVA=1,
+//		THREAD_JAVA=1,
 		THREAD_NATIVE=2;
 	
 	public void setThreadMod(int threadMod) {
 		this.threadMod = threadMod;
 	}
 	
+	public boolean isNativeThread() {
+		return threadMod == THREAD_NATIVE;
+	}
+	
 	@Override
 	public boolean handleMessage(Message msg) {
+//		EmuLog.i(TAG, "emu handle message: " + msg.what);
+		
 		switch (msg.what) {
 		case MSG_TIMER_OUT:
 			vm_timeOut();
-			return true;
+			break;
 			
 		case MSG_CALLBACK:
 			native_callback(msg.arg1, msg.arg2);
@@ -255,9 +249,12 @@ public class Emulator implements Callback {
 		case MSG_MR_SMS_GET_SC:
 			vm_event(MrDefines.MR_SMS_GET_SC, 0, 0); //获取不到，暂时返回都是0
 			return true;
+			
+		default:
+			return (1 == native_handleMessage(msg.what, msg.arg1, msg.arg2));
 		}
 		
-		return false;
+		return true;
 	}
 	
 	/**
@@ -297,21 +294,9 @@ public class Emulator implements Callback {
 			path = "%" + runMrpPath;
 		}
 
-		if(threadMod == THREAD_JAVA){
-			// 主线程
-			thread = new HandlerThread("EmuThread");
-			// 设置为后台守护线程，需要在 start 之前
-			thread.setDaemon(true);
-			thread.start();
-			EmuLog.i(TAG, "EmuThread start...");
-			eventHandler = new EmuEventHandler(this, thread.getLooper());
-			// 发送启动 MRP 消息
-			eventHandler.obtainMessage(EmuEventHandler.EVN_ID_RUNMRP, path).sendToTarget();
-		}else if(threadMod == THREAD_NATIVE){
-			thread = null;
+		if(threadMod == THREAD_NATIVE){
 			vm_loadMrp_thread(path);
-		}else {
-			thread = null;
+		} else {
 			vm_loadMrp(path);
 		}
 	}
@@ -322,14 +307,8 @@ public class Emulator implements Callback {
 	public void stop() {
 		EmuLog.i(TAG, "stop");
 		
-		if(threadMod == THREAD_NATIVE){
-			running = false;
-			vm_exit();
-		}else if(threadMod == THREAD_JAVA) {
-			eventHandler.sendEmptyMessage(EmuEventHandler.EVN_ID_STOPMRP);
-		}else {
-			vm_exit();
-		}
+		running = false;
+		vm_exit();
 	}
 	
 	public void pause() {
@@ -351,9 +330,7 @@ public class Emulator implements Callback {
 	public void stopFoce() {
 		if(threadMod == THREAD_NATIVE){ 
 			vm_exit_foce();
-		}else if (threadMod == THREAD_JAVA) {
-			thread.quit();
-		}else {
+		} else {
 			stop();
 //			android.os.Process.killProcess(android.os.Process.myPid());
 		}
@@ -365,7 +342,7 @@ public class Emulator implements Callback {
 	 * 注：不能在这里杀掉进程，否则底层释放工作未完成
 	 */
 	private void N2J_finish(){
-		EmuLog.d(TAG, "java Emulator.finish() call");
+		EmuLog.d(TAG, "N2J_finish() called");
 		
 		if(!running) return;
 		
@@ -378,10 +355,6 @@ public class Emulator implements Callback {
 			timer.cancel();
 			timer = null;
 		}
-		if(thread != null){
-			thread.quit();
-			thread = null;
-		}
 		
 		audio.stop();
 		screen.freeRes();
@@ -392,10 +365,10 @@ public class Emulator implements Callback {
 	}
 	
 	///////////////////////////////////////////////
-	private void N2J_flush(int x, int y, int w, int h) {
+	private void N2J_flush() {
 		if(!running) return;
 		
-		emulatorView.flush(x, y, w, h);
+		emulatorView.flush();
 	}
 
 	private Timer timer;
@@ -405,13 +378,9 @@ public class Emulator implements Callback {
 		if (!running)
 			return;
 
-		// 此法不可取
 		task = new TimerTask() {
 			@Override
 			public void run() {
-//				emulatorActivity.runOnUiThread(timeRunnable);
-//				handler.post(timeRunnable);
-//				emulatorActivity.postUIRunable(timeRunnable);
 				handler.sendEmptyMessage(MSG_TIMER_OUT);
 			}
 		};
@@ -447,11 +416,7 @@ public class Emulator implements Callback {
 	public void postMrpEvent(int p0, int p1, int p2) {
 		if(!running) return;
 
-		if(threadMod == THREAD_JAVA){
-			eventHandler.obtainMessage(EmuEventHandler.EVN_ID_MREVENT, new int[]{p0, p1, p2}).sendToTarget();
-		}else {
-			vm_event(p0, p1, p2);
-		}
+		vm_event(p0, p1, p2);
 	}
 	
 	//////////// 编辑框接口  ////////////
@@ -683,12 +648,6 @@ public class Emulator implements Callback {
 				}
 			}else if (action.equals("getSmsCenter")) { //获取短信中心，通过 mr_event 回调
 				handler.sendEmptyMessageDelayed(MSG_MR_SMS_GET_SC, 500);
-//				handler.postDelayed(new Runnable() {
-//					@Override
-//					public void run() {
-//						vm_event(MrDefines.MR_SMS_GET_SC, 0, 0);
-//					}
-//				}, 500);
 			}else if ("showToast".equals(action)) {
 				Toast.makeText(emulatorActivity, args[1], Toast.LENGTH_SHORT).show();
 			}else if ("crash".equals(action)) {
@@ -703,6 +662,12 @@ public class Emulator implements Callback {
 			}
 		}
 	}
+	
+	private void N2J_sendMessage(int what, int p0, int p1, int delay) {
+		EmuLog.i(TAG, "n2j sengMessage " + what);
+		
+		handler.sendMessageDelayed(handler.obtainMessage(what, p0, p1), delay);
+	}
 
 	/// ////////////////////////////////////////
 	public native void native_create(MrpScreen mrpScreen, EmuAudio emuAudio);
@@ -715,6 +680,7 @@ public class Emulator implements Callback {
 	public native void native_setIntOptions(String key, int value);
 	public static native String native_getAppName(String path);
 	public native void native_callback(int what, int param);
+	public native int native_handleMessage(int what, int p0, int p1);
 	
 	//---- VM -----------------------
 	public native int vm_loadMrp(String path);
@@ -728,6 +694,7 @@ public class Emulator implements Callback {
 	public native int vm_smsIndiaction(String pContent, String pNum);
 	public native int vm_newSIMInd(int type, byte[] old_IMSI);
 	public native int vm_registerAPP(byte[] p, int len, int index);
+	
 	
 	///////////////////////////////////
 	

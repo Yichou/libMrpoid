@@ -24,9 +24,6 @@ public abstract class BaseActivity extends Activity { //implements
 	protected void onCreate(Bundle arg0) {
 		super.onCreate(arg0);
 
-		// 加载资源
-		Res.load(this);
-		
 		//错误报告
 		SdkUtils.setRealImpl(fetchSdk());
 		SdkUtils.enableCrashHandle(this, true);
@@ -86,7 +83,6 @@ public abstract class BaseActivity extends Activity { //implements
 	protected void onDestroy() {
 		Prefer.getInstance().otherSave();
 
-		Res.unLoad();
 		Emulator.releaseInstance();
 
 		super.onDestroy();

@@ -17,11 +17,10 @@ import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
-import android.preference.PreferenceScreen;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
+import android.preference.PreferenceScreen;
 import android.view.MenuItem;
 import android.widget.Toast;
 
@@ -180,13 +179,9 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 			
 			return true;
 		} 
-		/*else if (Prefer.KEY_SCN_SIZE.equals(p.getKey())) {
+		else if (Prefer.KEY_SCN_SIZE.equals(p.getKey())) {
 			p.setSummary((CharSequence) v);
-			if(chkpMulti.isChecked()){
-				//Prefer 后接受改变监听
-				epMythroad.setSummary( EmuPath.DEF_MYTHROAD_DIR + v.toString() + "/");
-			}
-		} */
+		} 
 		else if (Prefer.KEY_MULTI_PATH.equals(p.getKey())) {
 			epMythroad.setEnabled(!(Boolean)v);
 //			String path = "";

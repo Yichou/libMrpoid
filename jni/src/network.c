@@ -63,12 +63,6 @@ int32 mr_initNetwork(MR_INIT_NETWORK_CB cb, const char *mode)
 	if(gApiLogSw.showNet) 
 		LOGI("mr_initNetwork(mod:%s)", mode);
 
-	//	if(mode && strcasecmp(mode, "cmwap")==0 && dsmNetType!=NETTYPE_CMWAP){
-	//		//如果返回失败有的应用会无休止的 初始化。。。
-	//		LOGW("need cmwap apn.");
-	//		return MR_FAILED;
-	//	}
-
 	DsmSocketInit();
 	mr_soc.callBack = (void*)cb;
 
@@ -154,27 +148,9 @@ static void getHost(char *ptr)
 	thread_id = 0;
 }
 
-int32 mr_getHostByName(const char *ptr, MR_GET_HOST_CB cb)
-{
-	int ret;
-
-	LOGI("mr_getHostByName(%s)", ptr);
-
-	//	emu_getHostByName(ptr); //调 Java
-	ret = pthread_create(&thread_id, NULL, (void *)getHost, (void *)ptr);
-	if (ret != 0) {
-		LOGE ("pthread_create error!");
-		return MR_FAILED;
-	}
-
-	mr_soc.callBack = (void*)cb;
-
-	return MR_WAITING;
-}
-
 //#else
 
-int32 mr_getHostByName_block(const char *ptr, MR_GET_HOST_CB cb)
+int32 mr_getHostByName_block(const char *ptr)
 {
 	char **pptr;
 	struct hostent *hptr;
@@ -227,7 +203,34 @@ int32 mr_getHostByName_block(const char *ptr, MR_GET_HOST_CB cb)
 	return ntohl(ret);
 }
 
-//#endif
+int32 mr_getHostByName(const char *ptr, MR_GET_HOST_CB cb)
+{
+	int ret;
+
+	LOGI("mr_getHostByName(%s)", ptr);
+
+	mr_soc.callBack = (void*)cb;
+
+	if(gEmulatorCfg.b_nativeThread) {
+		static char nameBuf[256];
+
+		memset(nameBuf, 0, sizeof(nameBuf));
+		strncpy(nameBuf, ptr, sizeof(nameBuf)-1);
+
+		emu_sendMessage(EMU_MSG_GET_HSOT, (int)nameBuf, (int)cb, 100);
+
+		return MR_WAITING;
+	} else {
+		//	emu_getHostByName(ptr); //调 Java
+		ret = pthread_create(&thread_id, NULL, (void *)getHost, (void *)ptr);
+		if (ret != 0) {
+			LOGE ("pthread_create error!");
+			return MR_FAILED;
+		}
+	}
+
+	return MR_WAITING;
+}
 
 static int32 dsmGetSocketIndexFromId(int32 socketId)
 {
@@ -623,7 +626,7 @@ void getRealIP(const char *buf, int len, int32 *ip, int32 *prot)
 
 		sscanf(line, "Host: %[^:]:%s", ipstr, portstr);
 
-		*ip = mr_getHostByName_block(ipstr, NULL);
+		*ip = mr_getHostByName_block(ipstr);
 		*prot = atoi(portstr);
 	}
 }

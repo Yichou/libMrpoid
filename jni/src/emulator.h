@@ -1,21 +1,17 @@
 #ifndef _EMULATOR_H
 #define _EMULATOR_H
 
+#include <jni.h>
 #include <linux/types.h>
 #include <time.h>
-#include <linux/time.h>
-#include <sys/time.h>
-
-#include <jni.h>
 #include <android/log.h>
+#include <pthread.h>
 
 #include "mr_types.h"
 #include "mr_helper.h"
-#include "timer.h"
 #include "utils.h"
 #include "dsm.h"
 #include "vm.h"
-#include "lib/msgbox.h"
 
 
 //---------------------------------------------
@@ -26,6 +22,13 @@ enum {
 
 	CALLBACK_MAX
 };
+
+typedef enum {
+	EMU_MSG_STATR = 0x10000,
+	EMU_MSG_GET_HSOT,
+
+	EMU_MSG_MAX
+}E_EMU_MSGID;
 
 
 typedef struct {
@@ -42,7 +45,6 @@ typedef struct {
 typedef struct {
 	int androidDrawChar;	//使用 android 绘制字符
 	int useSysScreenbuf;	//使用系统屏幕缓冲区
-	int useLinuxTimer;		//使用 Linux 的timer
 	int enableExram;		//拓展内存
 	int b_nativeThread;		//使用 native thread 标志
 	int platform;			//平台号
@@ -57,6 +59,9 @@ typedef struct {
 	int32 vm_mem_len;
 	char* exMem;
 }T_EMULATOR_PARAMS;
+
+typedef int32 (*MR_CALLBACK)(int32 result);
+
 
 //--- 获取系统信息的 key ----------------------------
 #define SYSINFO_NETTYPE 	"netType"
@@ -80,9 +85,9 @@ extern int 			SCNH;
 #define screenH 	SCNH
 
 extern JavaVM		*gs_JavaVM;
-extern JNIEnv		*jniEnv;
-
-extern pmsg_box_t	g_pEmuMsgBox;
+extern JNIEnv		*gMainJniEnv;
+extern JNIEnv		*gVmJniEnv;
+extern pthread_t 	gvm_therad_id;
 
 extern T_EMULATOR_PARAMS 	gEmulatorParams;	//模拟器全局参数保存
 extern T_APILOG_SW			gApiLogSw; //API LOG 控制
@@ -145,6 +150,12 @@ jstring native_getAppName(JNIEnv * env, jobject self, jstring path);
 
 void native_getMemoryInfo(JNIEnv * env, jobject self);
 
+/**
+ * main thread handler
+ */
+int native_handleMessage(JNIEnv * env, jobject self,
+		jint what, jint p0, jint p1);
+
 void native_mrpScreenRest(JNIEnv * env, jobject self,
 		jobject cacheBitmap, jobject realBitmap, jint width, jint height);
 
@@ -186,6 +197,11 @@ void emu_setStringOptions(const char *key, const char *value);
 
 void N2J_readTsfFont(uint8 **outbuf, int32 *outlen);
 
-void N2J_callVoidMethodString(int argc, const char* argv[]);
+void N2J_callVoidMethodString(int argc, const char** argv);
+
+/**
+ * send a message to main thread
+ */
+void emu_sendMessage(int what, int p0, int p1, int delay);
 
 #endif
