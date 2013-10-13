@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "dsm.h"
 #include "vm.h"
+#include "mr_plat.h"
 
 
 //---------------------------------------------
