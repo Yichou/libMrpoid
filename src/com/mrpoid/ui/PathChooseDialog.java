@@ -22,8 +22,8 @@ import android.widget.TextView;
 
 import com.mrpoid.R;
 import com.mrpoid.ui.ListViewPathAdapter.OnPathOperateListener;
-import com.yichou.common.FileUtils;
-import com.yichou.common.UIUtils;
+import com.yichou.common.utils.FileUtils;
+import com.yichou.common.utils.UIUtils;
 
 /**
  * 路径选择弹窗

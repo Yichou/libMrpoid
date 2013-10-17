@@ -1,31 +1,60 @@
 package com.mrpoid.app;
 
+import android.app.Application;
+import android.util.Log;
+
 import com.mrpoid.core.EmuStatics;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.Prefer;
+import com.yichou.common.sdk.ISdk;
+import com.yichou.common.sdk.ISdk.CheckUpdateCallback;
+import com.yichou.common.sdk.SdkUtils;
 
-import android.app.Application;
-import android.widget.Toast;
 
+/**
+ * 
+ * @author Yichou
+ *
+ */
 public class EmuApplication extends Application {
-	private Emulator mEmulator;
-	
 	
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		
-		EmuStatics.setAppContext(getApplicationContext());
+		EmuStatics.setAppContext(this);
 		
-		mEmulator = Emulator.getInstance(this);
-		if (mEmulator == null) {
-			Toast.makeText(this, "虚拟机初始化失败!", Toast.LENGTH_SHORT).show();
-			System.exit(0);
-			
-			return;
-		}
+		Emulator.getInstance().init(this);
 		
 		// 一定要在模拟器初始化之后
 		Prefer.getInstance().init(this);
+		
+		SdkUtils.getSdk().setCatchException(this, true);
+		SdkUtils.getSdk().updateOnlineParams(this);
+		SdkUtils.getSdk().setUpdateWifiOnly(false);
+		SdkUtils.getSdk().setCheckUpdateCallback(new CheckUpdateCallback() {
+			
+			@Override
+			public void onSuccess(Object updateInfo) {
+				
+			}
+			
+			@Override
+			public void onFailure(int code, String msg) {
+				Log.e("update", "update fail code=" + code + ", msg=" + msg);
+			}
+		});
+		
+		SdkUtils.getSdk().setUpdateDownloadCallback(new ISdk.DownloadCallback() {
+			
+			@Override
+			public void onSuccess() {
+			}
+			
+			@Override
+			public void onFailure(int code, String msg) {
+				Log.e("update", "download fial code=" + code + ", savePath=" + msg);
+			}
+		});
 	}
 }

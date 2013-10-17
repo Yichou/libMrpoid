@@ -3,10 +3,9 @@ package com.mrpoid.core;
 import java.io.File;
 import java.util.ArrayList;
 
-import android.content.Context;
 import android.os.Environment;
 
-import com.yichou.common.FileUtils;
+import com.yichou.common.utils.FileUtils;
 
 /**
  * 路径管理

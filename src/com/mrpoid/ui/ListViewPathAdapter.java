@@ -12,7 +12,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.mrpoid.R;
-import com.yichou.common.FileUtils;
+import com.yichou.common.utils.FileUtils;
 
 /**
  * 

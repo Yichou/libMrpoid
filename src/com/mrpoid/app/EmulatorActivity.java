@@ -44,7 +44,6 @@ import android.widget.Toast;
 import com.mrpoid.R;
 import com.mrpoid.core.EmuLog;
 import com.mrpoid.core.EmuPath;
-import com.mrpoid.core.EmuStatics;
 import com.mrpoid.core.EmuUtils;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.EmulatorView;
@@ -60,7 +59,7 @@ import com.mrpoid.keysprite.KeyEventListener;
 import com.mrpoid.keysprite.KeySprite;
 import com.mrpoid.keysprite.OnChooseLitener;
 import com.mrpoid.keysprite.Sprite;
-import com.yichou.sdk.SdkUtils;
+import com.yichou.common.sdk.SdkUtils;
 
 /**
  * @author JianbinZhu
@@ -177,7 +176,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		vibrator = (Vibrator)getSystemService(Context.VIBRATOR_SERVICE);
 		
-		emulator = Emulator.getInstance(this);
+		emulator = Emulator.getInstance();
 		emulator.setEmulatorActivity(this);
 		
 		emulatorView = new EmulatorView(this);
@@ -221,7 +220,7 @@ public class EmulatorActivity extends FragmentActivity implements
 
 		mPaused = true;
 		
-		SdkUtils.onPause(this);
+		SdkUtils.getSdk().onPause(this);
 		mSmsReceiver.unRegister();
 		emulator.pause();
 		
@@ -240,7 +239,7 @@ public class EmulatorActivity extends FragmentActivity implements
 
 		mPaused = false;
 		backFroground();
-		SdkUtils.onResume(this);
+		SdkUtils.getSdk().onResume(this);
 		emulator.resume();
 		mSmsReceiver.register();
 		if(Prefer.showMemInfo)
@@ -255,7 +254,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		
 		if(emulator.isRunning()){ //说明在后台运行被杀了
 			EmuLog.e(TAG, "后台运行被杀！");
-			SdkUtils.event(this, "beKilled", "");
+			SdkUtils.getSdk().sendEvent(this, "beKilled", "");
 		}
 
 		Keypad.releaseBmp();
@@ -679,7 +678,7 @@ public class EmulatorActivity extends FragmentActivity implements
 	
 	private void entryBackground() {
 		startService(new Intent(this, EmuService.class).setAction(EmuService.ACTION_FOREGROUND));
-		SdkUtils.event(this, "backrun", EmuUtils.getTimeNow());
+		SdkUtils.getSdk().sendEvent(this, "backrun", EmuUtils.getTimeNow());
 	}
 	
 	private void backFroground() {
@@ -687,7 +686,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		
 		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		manager.cancel(1001);
-		SdkUtils.event(this, "fgrun", EmuUtils.getTimeNow());
+		SdkUtils.getSdk().sendEvent(this, "fgrun", EmuUtils.getTimeNow());
 	}
 	
 	@Override

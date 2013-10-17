@@ -21,12 +21,10 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
-import android.widget.Toast;
 
 import com.mrpoid.R;
 import com.mrpoid.core.Emulator;
-import com.yichou.common.InternalID;
-import com.yichou.common.UIUtils;
+import com.yichou.common.utils.InternalID;
 
 
 /**
@@ -100,6 +98,5 @@ public class EmuService extends Service {
     @Override
     public void onDestroy() {
     	stopForeground(true);
-    	UIUtils.ToastMessage(this, "I am killed!");
     }
 }

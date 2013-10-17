@@ -25,18 +25,32 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 
 	public EmuAudio(Context context, Emulator emulator) {
 		this.emulator = emulator;
-		
+		vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
+	}
+	
+	public void init() {
 		mp3Player = new MediaPlayer();
 //		float v = Prefer.volume/100.0f;
 //		mp3Player.setVolume(v, v);
-		vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
+	}
+	
+	public void recyle() {
+		if(mp3Player != null) {
+			mp3Player.release();
+			mp3Player = null;
+		}
+		
+		if(mediaPlayer != null) {
+			mediaPlayer.release();
+			mediaPlayer = null;
+		}
 	}
 
 	public void dispose() {
 		mp3Player.release();
 		mp3Player = null;
 		
-		if(mediaPlayer != null){
+		if(mediaPlayer != null) {
 			mediaPlayer.release();
 			mediaPlayer = null;
 		}

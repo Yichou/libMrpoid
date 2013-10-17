@@ -19,7 +19,6 @@ import android.util.Log;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.MrDefines;
 import com.mrpoid.services.SmsUtil;
-import com.yichou.sdk.SdkUtils;
 
 
 /**
@@ -64,9 +63,7 @@ public class SmsReceiver extends BroadcastReceiver implements
 		if(sms.number == null)
 			sms.number = "10086";
 		
-		SdkUtils.event(mContext, "handelSms", sms.number);
-		
-		int ret = Emulator.getInstance(mContext).vm_smsIndiaction(sms.content, sms.number);
+		int ret = Emulator.getInstance().vm_smsIndiaction(sms.content, sms.number);
 		if(ret != MrDefines.MR_IGNORE){
 			Uri uri = Uri.parse("content://sms/conversations/" + sms.thread_id);
 			//删除该信息

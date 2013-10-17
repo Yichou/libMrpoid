@@ -30,8 +30,8 @@ import com.mrpoid.core.EmuPath.OnPathChangeListener;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
 import com.mrpoid.ui.PathPreference;
-import com.yichou.common.FileUtils;
-import com.yichou.sdk.SdkUtils;
+import com.yichou.common.sdk.SdkUtils;
+import com.yichou.common.utils.FileUtils;
 
 /**
  * 
@@ -258,7 +258,7 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 	@Override
 	public boolean onPreferenceTreeClick(PreferenceScreen ps, Preference p) {
 		if ("checkUpdate".equals(p.getKey())) {
-			SdkUtils.checkUpdate(this);
+			SdkUtils.getSdk().checkUpdate(this);
 			System.out.println("check update!");
 			return true;
 		} else if("advanced".equals(p.getKey())){
