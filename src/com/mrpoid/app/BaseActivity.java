@@ -1,13 +1,9 @@
 package com.mrpoid.app;
 
 import android.app.Activity;
-import android.os.Bundle;
-import android.util.Log;
 
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.Prefer;
-import com.yichou.common.sdk.ISdk;
-import com.yichou.common.sdk.ISdk.CheckUpdateCallback;
 import com.yichou.common.sdk.SdkUtils;
 
 /**

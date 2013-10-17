@@ -50,6 +50,10 @@
             android:name="com.mrpoid.app.EmuService"
             android:exported="false" />
 
+        <receiver
+            android:name="com.mrpoid.app.EmuReceiver"
+            android:exported="false" />
+
         <activity
             android:name="com.mrpoid.app.EmulatorActivity"
             android:configChanges="orientation|keyboard"
