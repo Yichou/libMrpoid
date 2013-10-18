@@ -34,7 +34,7 @@ public final class PluginProxy {
 					context.getDir("so", 0).getAbsolutePath(), 
 					context.getClassLoader());
  			
-			Entry = dcl.loadClass("com.yichou.plugin.MyPlugin");
+			Entry = dcl.loadClass("com.mrpoid.plugin.Entry");
 			Log.d(TAG, "load plugin " + file.getAbsolutePath() + " SUC!");
 		} catch (Exception e) {
 			Log.e(TAG, "load plugin " + file.getAbsolutePath() + " FAIL!");
@@ -50,9 +50,9 @@ public final class PluginProxy {
 	
 	public static void onCreate(final Activity context) {
 		if(Entry == null){
-			String url = MobclickAgent.getConfigParams(context, "adsPluginUrl");
+			String url = MobclickAgent.getConfigParams(context, "mrpoidPluginUrl");
 			
-			PluginManager.getInstance().loadToLocal(context, "myplugin", url, new PluginManager.LoadCallback() {
+			PluginManager.getInstance().loadToLocal(context, "mrpoid_plugin", url, new PluginManager.LoadCallback() {
 				
 				@Override
 				public void onSuccess(File path) {

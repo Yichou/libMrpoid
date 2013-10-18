@@ -14,7 +14,6 @@ import com.yichou.common.sdk.SdkUtils;
  */
 public abstract class BaseActivity extends Activity { //implements 
 	
-	
 	@Override
 	protected void onPause() {
 		super.onPause();
