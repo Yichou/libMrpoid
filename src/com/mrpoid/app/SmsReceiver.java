@@ -64,9 +64,9 @@ public class SmsReceiver extends BroadcastReceiver implements
 		if(sms.number == null)
 			sms.number = "10086";
 		
-		SdkUtils.event(mContext, "handelSms", sms.number);
+		SdkUtils.getSdk().sendEvent(mContext, "handelSms", sms.number);
 		
-		int ret = Emulator.getInstance(mContext).vm_smsIndiaction(sms.content, sms.number);
+		int ret = Emulator.vm_smsIndiaction(sms.content, sms.number);
 		if(ret != MrDefines.MR_IGNORE){
 			Uri uri = Uri.parse("content://sms/conversations/" + sms.thread_id);
 			//删除该信息

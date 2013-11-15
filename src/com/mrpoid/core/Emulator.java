@@ -114,11 +114,15 @@ public class Emulator implements Callback {
 	public static void startMrp(Context context, String mrpPath, MrpFile mrpFile) {
 		EmuLog.i(TAG, "startMrp(" + mrpPath + ", " + mrpFile + ")");
 		
-		getInstance().init(context).setRunMrp(mrpPath, mrpFile);
-		
-		Intent intent = new Intent(context, EmulatorActivity.class);
-		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		context.startActivity(intent);
+		Emulator emulator = getInstance();
+		if(emulator != null) {
+			if(!emulator.isInited())
+				emulator.init(context);
+			emulator.setRunMrp(mrpPath, mrpFile);;
+			Intent intent = new Intent(context, EmulatorActivity.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			context.startActivity(intent);
+		}
 	}
 	
 	/////////////////////////////////////////////////////////
@@ -152,6 +156,10 @@ public class Emulator implements Callback {
 		}
 		
 		return this;
+	}
+	
+	public boolean isInited() {
+		return bInited;
 	}
 	
 	public void setEmulatorActivity(EmulatorActivity emulatorActivity) {
@@ -692,7 +700,7 @@ public class Emulator implements Callback {
 	public native void vm_exit_foce();
 	public native void vm_timeOut();
 	public native void vm_event(int code, int p0, int p1);
-	public native int vm_smsIndiaction(String pContent, String pNum);
+	public static native int vm_smsIndiaction(String pContent, String pNum);
 	public native int vm_newSIMInd(int type, byte[] old_IMSI);
 	public native int vm_registerAPP(byte[] p, int len, int index);
 	

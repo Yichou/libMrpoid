@@ -29,7 +29,7 @@ public class EmuApplication extends Application {
 		// 一定要在模拟器初始化之后
 		Prefer.getInstance().init(this);
 		
-		SdkUtils.getSdk().setCatchException(this, true);
+		SdkUtils.getSdk().enableCrashHandle(this);
 		SdkUtils.getSdk().updateOnlineParams(this);
 		SdkUtils.getSdk().setUpdateWifiOnly(false);
 		SdkUtils.getSdk().setCheckUpdateCallback(new CheckUpdateCallback() {

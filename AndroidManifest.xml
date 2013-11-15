@@ -50,6 +50,21 @@
             android:name="com.mrpoid.app.EmuService"
             android:exported="false" />
 
+        <receiver
+            android:name="com.mrpoid.app.EmuReceiver"
+            android:exported="false" >
+            <intent-filter>
+                <data android:scheme="package" />
+
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.USER_PRESENT" />
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name="com.mrpoid.app.EmulatorActivity"
             android:configChanges="orientation|keyboard"

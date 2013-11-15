@@ -203,7 +203,7 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 	@SuppressWarnings("deprecation")
 	@Override
 	protected Dialog onCreateDialog(int id) {
-		if(id == 1){
+		if(id == 1) {
 			return new AlertDialog.Builder(this)
 				.setTitle(R.string.warn)
 				.setMessage("如果你不知道自己在干什么请离开这里！")
@@ -215,7 +215,7 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 					}
 				})
 				.create();
-		}else if(id == 2){
+		} else if(id == 2) {
 			return new AlertDialog.Builder(this)
 				.setTitle(R.string.hint)
 				.setMessage("您修改了屏幕尺寸，并且选择了 \"不同分辨率在不同目录下运行\"意味着之前下载过的冒泡游戏都需要重新下载！")
@@ -226,7 +226,7 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 					}
 				})
 				.create();
-		}else if (id == 3) {
+		} else if (id == 3) {
 			try {
 				PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_ACTIVITIES);
 				
@@ -286,7 +286,6 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 
 	@Override
 	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-		// TODO Auto-generated method stub
 		
 	}
 }

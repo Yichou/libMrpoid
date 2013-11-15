@@ -2,6 +2,7 @@ package com.mrpoid.app;
 
 import java.io.File;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -11,7 +12,6 @@ import android.widget.Toast;
 import com.mrpoid.core.EmuPath;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.MrpFile;
-import com.yichou.common.sdk.SdkInterface;
 import com.yichou.common.utils.FileUtils;
 
 /**
@@ -20,7 +20,7 @@ import com.yichou.common.utils.FileUtils;
  * @author Yichou
  * 
  */
-public class ExternActivity extends BaseActivity {
+public class ExternActivity extends Activity {
 	private static final String TAG = "MrpoidExtern";
 
 	private void showError(String msg) {
@@ -79,11 +79,5 @@ public class ExternActivity extends BaseActivity {
 
 		// 运行mrp关闭后，确定会调用此方法么？
 		finish();
-	}
-
-	@Override
-	protected SdkInterface fetchSdk() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }
