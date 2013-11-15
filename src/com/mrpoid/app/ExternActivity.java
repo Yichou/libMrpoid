@@ -11,8 +11,8 @@ import android.widget.Toast;
 import com.mrpoid.core.EmuPath;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.MrpFile;
-import com.yichou.common.FileUtils;
-import com.yichou.sdk.SdkInterface;
+import com.yichou.common.sdk.SdkInterface;
+import com.yichou.common.utils.FileUtils;
 
 /**
  * 外部通过此Activity 启动模拟器运行mrp

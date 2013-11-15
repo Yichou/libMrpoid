@@ -44,7 +44,6 @@ import android.widget.Toast;
 import com.mrpoid.R;
 import com.mrpoid.core.EmuLog;
 import com.mrpoid.core.EmuPath;
-import com.mrpoid.core.EmuStatics;
 import com.mrpoid.core.EmuUtils;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.EmulatorView;
@@ -60,7 +59,7 @@ import com.mrpoid.keysprite.KeyEventListener;
 import com.mrpoid.keysprite.KeySprite;
 import com.mrpoid.keysprite.OnChooseLitener;
 import com.mrpoid.keysprite.Sprite;
-import com.yichou.sdk.SdkUtils;
+import com.yichou.common.sdk.SdkUtils;
 
 /**
  * @author JianbinZhu

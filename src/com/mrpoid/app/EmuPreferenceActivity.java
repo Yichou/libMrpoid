@@ -30,8 +30,8 @@ import com.mrpoid.core.EmuPath.OnPathChangeListener;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
 import com.mrpoid.ui.PathPreference;
-import com.yichou.common.FileUtils;
-import com.yichou.sdk.SdkUtils;
+import com.yichou.common.sdk.SdkUtils;
+import com.yichou.common.utils.FileUtils;
 
 /**
  * 

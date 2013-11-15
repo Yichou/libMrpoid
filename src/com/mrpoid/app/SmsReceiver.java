@@ -19,7 +19,7 @@ import android.util.Log;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.MrDefines;
 import com.mrpoid.services.SmsUtil;
-import com.yichou.sdk.SdkUtils;
+import com.yichou.common.sdk.SdkUtils;
 
 
 /**

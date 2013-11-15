@@ -6,11 +6,10 @@ import android.widget.Toast;
 
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.Prefer;
-import com.mrpoid.core.Res;
-import com.yichou.sdk.CheckUpdateCallback;
-import com.yichou.sdk.DownloadCallback;
-import com.yichou.sdk.SdkInterface;
-import com.yichou.sdk.SdkUtils;
+import com.yichou.common.sdk.CheckUpdateCallback;
+import com.yichou.common.sdk.DownloadCallback;
+import com.yichou.common.sdk.SdkInterface;
+import com.yichou.common.sdk.SdkUtils;
 
 /**
  * 模拟器入口基类，封装了一些初始化销毁工作

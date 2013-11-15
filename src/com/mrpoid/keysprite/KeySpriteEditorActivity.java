@@ -26,7 +26,7 @@ import android.widget.Toast;
 
 import com.mrpoid.R;
 import com.mrpoid.core.EmuPath;
-import com.yichou.common.FileUtils;
+import com.yichou.common.utils.FileUtils;
 
 
 /**

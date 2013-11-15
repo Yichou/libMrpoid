@@ -6,10 +6,8 @@ import android.content.SharedPreferences.Editor;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.graphics.Point;
 import android.preference.PreferenceManager;
-import android.widget.Toast;
 
-import com.yichou.common.FileUtils;
-import com.yichou.sdk.SdkUtils;
+import com.yichou.common.sdk.SdkUtils;
 
 /**
  * 配置管理
