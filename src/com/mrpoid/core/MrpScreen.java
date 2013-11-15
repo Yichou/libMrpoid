@@ -14,7 +14,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
@@ -40,7 +39,7 @@ public class MrpScreen {
 	public Canvas cacheCanvas = new Canvas();
 	private RectF region = new RectF(); //绘制区域
 	private float scaleX, scaleY;
-	public Point size = new Point(); //大小
+//	public Point size = new Point(); //大小
 	private int viewW, viewH;
 	private int screenW, screenH;
 	
@@ -164,37 +163,24 @@ public class MrpScreen {
 //		Log.i("---", "measure" + String.valueOf(tmpBuf));
 	}
 	
+	private void createBitmap() {
+		//重新创建屏幕位图
+		if(bitmap != null)
+			bitmap.recycle();
+		if(cacheBitmap != null)
+			cacheBitmap.recycle();
+		
+		cacheBitmap = Bitmap.createBitmap(screenW, screenH, Config.RGB_565);
+		bitmap = Bitmap.createBitmap(screenW, screenH, Config.RGB_565);
+		cacheCanvas.setBitmap(cacheBitmap);
+		
+		native_reset(cacheBitmap, bitmap, screenW, screenH);
+	}
+	
 	public void init() {
-		screenW = screenSize.width;
-		screenH = screenSize.height;
-		setMrpScreenSize(screenW, screenH);
+		setMrpScreenSize(screenSize.width, screenSize.height);
 		clear(Color.WHITE);
 	}
-//	
-//	public void attachSurface(EmulatorView surface) {
-//		mHolder = surface.getHolder();
-//		
-//		System.out.println("surface attached!");
-//	}
-//	
-//	public void datchSurface() {
-//		mHolder = null;
-//	}
-//	
-//	private void N2J_flush() {
-//		if(mHolder == null)
-//			return;
-//		
-//		Canvas c = mHolder.lockCanvas();
-//		c.drawColor(Color.GRAY);
-//		
-//		float left = 100;
-//		float t = 100;
-//		
-//		c.drawBitmap(bitmap, left, t, null);
-//		
-//		mHolder.unlockCanvasAndPost(c);
-//	}
 	
 	/**
 	 * emulatorView 的尺寸改变后应该重新设置屏幕缩放比例
@@ -236,7 +222,8 @@ public class MrpScreen {
 	 * @param h
 	 */
 	private void setMrpScreenSize(int w, int h) {
-		if(size.equals(w, h)) return;
+//		if(screenW == w && screenH == h)
+//			return;
 		
 		switch (w) {
 		case 176:
@@ -256,22 +243,9 @@ public class MrpScreen {
 			break;
 		}
 		
-		size.set(w, h);
+		screenW = w;
+		screenH = h;
 		createBitmap();
-	}
-	
-	private void createBitmap() {
-		//重新创建屏幕位图
-		if(bitmap != null)
-			bitmap.recycle();
-		if(cacheBitmap != null)
-			cacheBitmap.recycle();
-		
-		cacheBitmap = Bitmap.createBitmap(size.x, size.y, Config.RGB_565);
-		bitmap = Bitmap.createBitmap(size.x, size.y, Config.RGB_565);
-		cacheCanvas.setBitmap(cacheBitmap);
-		
-		native_reset(cacheBitmap, bitmap, size.x, size.y);
 	}
 	
 	public void setPosition(int x, int y) {
@@ -293,11 +267,11 @@ public class MrpScreen {
 		this.scaleX = sx;
 		this.scaleY = sy;
 		
-		float w = size.x*scaleX;
+		float w = screenW*scaleX;
 		region.left = (emulator.emulatorView.getWidth() - w)/2;
 		region.right = region.left + w;
 		region.top = 0;
-		region.bottom = size.y*scaleY;
+		region.bottom = screenH*scaleY;
 		
 		//竖直居中
 //		if(Prefer.keypadMode == 0 && region.height() < viewH){
@@ -316,9 +290,21 @@ public class MrpScreen {
 			}
 			
 			if(bitmap == null || bitmap.isRecycled()){
-				bitmap = Bitmap.createBitmap(size.x, size.y, Config.RGB_565);
-				native_reset(cacheBitmap, bitmap, size.x, size.y);
+				bitmap = Bitmap.createBitmap(screenW, screenH, Config.RGB_565);
+				native_reset(cacheBitmap, bitmap, screenW, screenH);
 			}
+		}
+	}
+	
+	public void recyle() {
+		if(bitmap != null) {
+			bitmap.recycle();
+			bitmap = null;
+		}
+		
+		if(cacheBitmap != null) {
+			cacheBitmap.recycle();
+			cacheBitmap = null;
 		}
 	}
 	

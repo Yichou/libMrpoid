@@ -53,6 +53,7 @@ public class Emulator implements Callback {
 	
 	private int threadMod = THREAD_MAIN;
 	private boolean running;
+	private boolean bInited;
 	
 	public int N2J_charW, N2J_charH; //这2个值保存 每次measure的结果，底层通过获取这2个值来获取尺寸
 	public int N2J_memLen, N2J_memLeft, N2J_memTop;
@@ -74,19 +75,7 @@ public class Emulator implements Callback {
 		System.loadLibrary("mrpoid"); 
 	}
 	
-	/**
-	 * 获取虚拟机实例
-	 * 
-	 * @param context
-	 * @return 虚拟机对象
-	 */
-	public static Emulator getInstance(Context context){
-		if(instance == null){
-			instance = new Emulator(context);
-//			throw new RuntimeException("must call resetInstance first!");
-		}
-		 
-		return instance;
+	private Emulator() {
 	}
 
 	/**
@@ -95,6 +84,9 @@ public class Emulator implements Callback {
 	 * @return 模拟器实例
 	 */
 	public static Emulator getInstance(){
+		if(instance == null)
+			instance = new Emulator();
+		
 		return instance;
 	}
 	
@@ -122,39 +114,44 @@ public class Emulator implements Callback {
 	public static void startMrp(Context context, String mrpPath, MrpFile mrpFile) {
 		EmuLog.i(TAG, "startMrp(" + mrpPath + ", " + mrpFile + ")");
 		
-		if(instance == null){
-			getInstance(context);
-//			throw new NullPointerException("emulator instance is NULL!");
-		}
+		getInstance().init(context).setRunMrp(mrpPath, mrpFile);
 		
-		instance.setRunMrp(mrpPath, mrpFile);
 		Intent intent = new Intent(context, EmulatorActivity.class);
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		context.startActivity(intent);
 	}
 	
 	/////////////////////////////////////////////////////////
-	private Emulator(final Context context) {
+	public Emulator init(final Context context) {
 		this.context = context.getApplicationContext();
 		
-		screen = new MrpScreen(this);
-		audio = new EmuAudio(context, this);
-		try {
-			EmuLog.i(TAG, "call native_create tid=" + Thread.currentThread().getId());
-			native_create(screen, audio);
-		} catch (Exception e) {
-			e.printStackTrace();
+		synchronized (this) {
+			if(bInited)
+				return this;
+			
+			screen = new MrpScreen(this);
+			audio = new EmuAudio(context, this);
+			try {
+				EmuLog.i(TAG, "call native_create tid=" + Thread.currentThread().getId());
+				native_create(screen, audio);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			//起线程获取短信中心
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					String N2J_smsCenter = SmsUtil.getSmsCenter(context);
+					native_setStringOptions("smsCenter", N2J_smsCenter);
+					EmuLog.i(TAG, "smsCenter: " + N2J_smsCenter);
+				}
+			}).start();
+			
+			bInited = true;
 		}
 		
-		//起线程获取短信中心
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				String N2J_smsCenter = SmsUtil.getSmsCenter(context);
-				native_setStringOptions("smsCenter", N2J_smsCenter);
-				EmuLog.i(TAG, "smsCenter: " + N2J_smsCenter);
-			}
-		}).start();
+		return this;
 	}
 	
 	public void setEmulatorActivity(EmulatorActivity emulatorActivity) {
@@ -282,6 +279,7 @@ public class Emulator implements Callback {
 		
 		Prefer.getInstance().init(emulatorActivity);
 		
+		audio.init();
 		screen.init();
 		timer = new Timer();
 		handler = new Handler(this);
@@ -357,7 +355,10 @@ public class Emulator implements Callback {
 		}
 		
 		audio.stop();
+		audio.recyle();
 		screen.freeRes();
+		screen.recyle();
+		
 		emulatorActivity.finish();
 		
 		emulatorActivity = null;

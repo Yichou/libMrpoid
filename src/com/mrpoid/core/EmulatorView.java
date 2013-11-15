@@ -52,7 +52,7 @@ public class EmulatorView extends SurfaceView implements
 		setFocusable(true);
 		requestFocus();
 		
-		emulator = Emulator.getInstance(context);
+		emulator = Emulator.getInstance();
 		emulator.setEmulatorView(this);
 		screen = emulator.getScreen();
 		

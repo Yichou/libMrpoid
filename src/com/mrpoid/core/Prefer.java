@@ -163,7 +163,7 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			int nowTime = EmuUtils.getDayOfYear();
 			int lastTime = sp.getInt(KEY_LAST_UPDATE_TIME, nowTime - 8); //首次自动更新
 			if(nowTime - lastTime >= 7){ //每周检测更新
-				SdkUtils.checkUpdate(context);
+				SdkUtils.getSdk().checkUpdate(context);
 				sp.edit()
 					.putInt(KEY_LAST_UPDATE_TIME, nowTime)
 					.commit();

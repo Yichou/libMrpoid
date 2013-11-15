@@ -162,7 +162,6 @@ static void initJniId(JNIEnv * env, jobject self)
 
 static void freeJniId()
 {
-
 }
 
 //------------------------

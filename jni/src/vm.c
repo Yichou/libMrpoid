@@ -10,6 +10,8 @@
 #include <lib/JniUtils.h>
 #include <msgqueue.h>
 #include <message.h>
+#include <mr_plat.h>
+#include <mrporting.h>
 
 
 pthread_t 	gvm_therad_id = 0;

@@ -33,6 +33,7 @@
 #include "font/tsffont.h"
 #include "encode.h"
 #include "utils.h"
+#include "mr_plat.h"
 
 
 
