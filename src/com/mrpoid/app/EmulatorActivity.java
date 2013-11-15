@@ -53,6 +53,7 @@ import com.mrpoid.core.KeypadView;
 import com.mrpoid.core.MrDefines;
 import com.mrpoid.core.MrpFile;
 import com.mrpoid.core.MrpScreen;
+import com.mrpoid.core.PluginProxy;
 import com.mrpoid.core.Prefer;
 import com.mrpoid.keysprite.ChooserFragment;
 import com.mrpoid.keysprite.KeyEventListener;
@@ -212,6 +213,8 @@ public class EmulatorActivity extends FragmentActivity implements
 			tvInfo.setPadding(padding, padding, padding, padding);
 			continer.addView(tvInfo, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
 		}
+		
+		PluginProxy.onCreate(this);
 	}
 	
 	@Override
@@ -229,6 +232,8 @@ public class EmulatorActivity extends FragmentActivity implements
 		} else {
 			Keypad.getInstance().setOnKeyEventListener(null);
 		}
+		
+		PluginProxy.onPause(this);
 
 		super.onPause();
 	}
@@ -245,6 +250,8 @@ public class EmulatorActivity extends FragmentActivity implements
 		if(Prefer.showMemInfo)
 			handler.sendEmptyMessageDelayed(MSG_ID_UPDATE, 1000);
 		
+		PluginProxy.onResume(this);
+		
 		super.onResume();
 	}
 	
@@ -259,6 +266,8 @@ public class EmulatorActivity extends FragmentActivity implements
 
 		Keypad.releaseBmp();
 		unregisterReceiver(mReceiver);
+		
+		PluginProxy.onDestory(this);
 		
 		super.onDestroy(); 
 	}
