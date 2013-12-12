@@ -1,6 +1,11 @@
-package com.mrpoid.core;
+package com.mrpoid.app;
 
 import com.mrpoid.R;
+import com.mrpoid.core.EmuLog;
+import com.mrpoid.core.Emulator;
+import com.mrpoid.core.MrDefines;
+import com.mrpoid.core.MrpScreen;
+import com.mrpoid.core.Prefer;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -21,10 +26,10 @@ import android.view.SurfaceView;
  * @author JianbinZhu
  *
  */
-public class EmulatorView extends SurfaceView implements
+public class EmulatorSurface extends SurfaceView implements
 			SurfaceHolder.Callback, 
 			Handler.Callback  {
-	public static final String TAG = "EmulatorView";
+	public static final String TAG = "EmulatorSurface";
 	
 	private Emulator emulator;
 	private MrpScreen screen;
@@ -42,7 +47,7 @@ public class EmulatorView extends SurfaceView implements
 		this.bitmapBg = bitmapBg;
 	}
 	
-	public EmulatorView(Context context) {
+	public EmulatorSurface(Context context) {
 		super(context);
 		
 		getHolder().addCallback(this);
@@ -53,7 +58,7 @@ public class EmulatorView extends SurfaceView implements
 		requestFocus();
 		
 		emulator = Emulator.getInstance();
-		emulator.setEmulatorView(this);
+		emulator.attachSurface(this);
 		screen = emulator.getScreen();
 		
 		paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -99,11 +104,7 @@ public class EmulatorView extends SurfaceView implements
 	}
 	
 	private void postDraw() {
-		if(emulator.isNativeThread()) {
-			myDraw();
-		} else {
-			drawHandler.sendEmptyMessage(MSG_ON_RESIZE);
-		}
+		drawHandler.sendEmptyMessage(MSG_ON_RESIZE);
 	}
 	
 	//---------- surfaceView -----------------------------------------------
@@ -125,13 +126,11 @@ public class EmulatorView extends SurfaceView implements
 		
 		surfaceCreated = true;
 		
-		if(!emulator.isNativeThread()) {
-			drawThread = new HandlerThread("drawThread");
-			drawThread.start();
-			EmuLog.i(TAG, "drawThread id = " + drawThread.getId());
-			drawHandler = new Handler(drawThread.getLooper(), this);
-			drawHandler.sendEmptyMessage(MSG_ON_CREATE);
-		}
+		drawThread = new HandlerThread("drawThread");
+		drawThread.start();
+		EmuLog.i(TAG, "drawThread id = " + drawThread.getId());
+		drawHandler = new Handler(drawThread.getLooper(), this);
+		drawHandler.sendEmptyMessage(MSG_ON_CREATE);
 		
 		/**
 		 * 如果 surfaceCreated 是立即执行的会怎么样？
@@ -150,15 +149,13 @@ public class EmulatorView extends SurfaceView implements
 		EmuLog.d(TAG, "surfaceDestroyed");
 		surfaceCreated = false;
 		
-		if(!emulator.isNativeThread()) {
-			drawThread.quit();
-			//此处应该 join 等待 drawThread 结束
-			try {
-				drawThread.join();
-				EmuLog.i(TAG, "drawThread join finish!");
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+		drawThread.quit();
+		//此处应该 join 等待 drawThread 结束
+		try {
+			drawThread.join();
+			EmuLog.i(TAG, "drawThread join finish!");
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
 	

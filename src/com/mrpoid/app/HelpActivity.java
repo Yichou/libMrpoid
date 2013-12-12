@@ -8,8 +8,6 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.mrpoid.core.Prefer;
-
 /**
  * 
  * @author Yichou
@@ -21,8 +19,6 @@ public class HelpActivity extends Activity {
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		setTheme(Prefer.THEME); // Used for theme switching in samples
-
 		super.onCreate(savedInstanceState);
 
 		webView = new WebView(this);

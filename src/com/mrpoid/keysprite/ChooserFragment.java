@@ -10,7 +10,7 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 
 import com.mrpoid.R;
-import com.mrpoid.core.EmuPath;
+import com.mrpoid.core.Emulator;
 
 /**
  * 按键精灵选择界面
@@ -39,7 +39,7 @@ public class ChooserFragment extends DialogFragment {
 	
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
-		final File dir = EmuPath.getPublicFilePath("keySprites");
+		final File dir = Emulator.getPublicFilePath("keySprites");
 		final String[] files = dir.list();
 
 		return new AlertDialog.Builder(getActivity())

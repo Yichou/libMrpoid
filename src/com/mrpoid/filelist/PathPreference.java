@@ -1,4 +1,4 @@
-package com.mrpoid.ui;
+package com.mrpoid.filelist;
 
 import java.io.File;
 

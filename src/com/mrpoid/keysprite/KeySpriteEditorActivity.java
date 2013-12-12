@@ -25,7 +25,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mrpoid.R;
-import com.mrpoid.core.EmuPath;
+import com.mrpoid.core.Emulator;
 import com.yichou.common.utils.FileUtils;
 
 
@@ -96,7 +96,7 @@ public class KeySpriteEditorActivity extends Activity implements OnItemSelectedL
 	}
 	
 	private void save(String name) {
-		File dir = EmuPath.getPublicFilePath("keySprites");
+		File dir = Emulator.getPublicFilePath("keySprites");
 		FileUtils.createDir(dir);
 		
 		File file = new File(dir, name + ".xml");

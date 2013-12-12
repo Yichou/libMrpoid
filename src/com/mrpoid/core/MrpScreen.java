@@ -53,7 +53,6 @@ public class MrpScreen {
 	
 	
 	public MrpScreen(Emulator emulator) {
-		super();
 		this.emulator = emulator;
 		
 		paint = new Paint();
@@ -74,7 +73,7 @@ public class MrpScreen {
 		CHR_H = textRect.height();
 	}
 	
-	public void dispose() {
+	public synchronized void recyle() {
 		if(bitmap != null) {
 			bitmap.recycle();
 			bitmap = null;
@@ -268,7 +267,7 @@ public class MrpScreen {
 		this.scaleY = sy;
 		
 		float w = screenW*scaleX;
-		region.left = (emulator.emulatorView.getWidth() - w)/2;
+		region.left = (emulator.getSurface().getWidth() - w)/2;
 		region.right = region.left + w;
 		region.top = 0;
 		region.bottom = screenH*scaleY;
@@ -296,23 +295,16 @@ public class MrpScreen {
 		}
 	}
 	
-	public void recyle() {
-		if(bitmap != null) {
-			bitmap.recycle();
-			bitmap = null;
-		}
-		
-		if(cacheBitmap != null) {
-			cacheBitmap.recycle();
-			cacheBitmap = null;
-		}
-	}
-	
 	public void draw(Canvas canvas) {
 //		bitmap.setPixel(0, 0, Color.BLACK);
 //		bitmap.setPixel(size.x-1, 0, Color.BLACK);
 //		ByteBuffer buffer = ByteBuffer.wrap(screenBuf);
 //		bitmap.copyPixelsFromBuffer(buffer);
+		
+		if(bitmap==null || bitmap.isRecycled()) {
+//			canvas.drawColor(Color.RED);
+			return;
+		}
 		
 		/**
 		 * 刷屏非主线程，这里涉及到 bitmap 同时占有的问题，所以先进底层锁住

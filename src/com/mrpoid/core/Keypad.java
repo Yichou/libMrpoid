@@ -18,6 +18,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.mrpoid.R;
+import com.mrpoid.app.EmulatorApplication;
 import com.mrpoid.gui.Actor;
 import com.mrpoid.gui.Actor.ClickCallback;
 import com.mrpoid.gui.ActorGroup;
@@ -161,7 +162,7 @@ public class Keypad extends Director implements ClickCallback {
 	
 	public static File getXml(boolean isLandscape, int mode) {
 //		return EmuPath.getPublicFilePath(isLandscape ? 
-		return EmuStatics.getAppContext().getFileStreamPath(isLandscape ? 
+		return EmulatorApplication.getContext().getFileStreamPath(isLandscape ? 
 				String.format("keypad_land_%d.xml", mode) : String.format("keypad_%d.xml", mode));
 	}
 	

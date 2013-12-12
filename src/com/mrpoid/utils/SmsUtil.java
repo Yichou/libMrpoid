@@ -1,6 +1,6 @@
-package com.mrpoid.services;
+package com.mrpoid.utils;
 
-import com.mrpoid.services.Frequency.Entiry;
+import com.mrpoid.utils.Frequency.Entiry;
 
 import android.content.Context;
 import android.database.Cursor;

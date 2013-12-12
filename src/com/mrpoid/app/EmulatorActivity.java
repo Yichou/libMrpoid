@@ -43,15 +43,12 @@ import android.widget.Toast;
 
 import com.mrpoid.R;
 import com.mrpoid.core.EmuLog;
-import com.mrpoid.core.EmuPath;
 import com.mrpoid.core.EmuUtils;
 import com.mrpoid.core.Emulator;
-import com.mrpoid.core.EmulatorView;
 import com.mrpoid.core.Keypad;
 import com.mrpoid.core.Keypad.OnKeyEventListener;
 import com.mrpoid.core.KeypadView;
 import com.mrpoid.core.MrDefines;
-import com.mrpoid.core.MrpFile;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.PluginProxy;
 import com.mrpoid.core.Prefer;
@@ -74,7 +71,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		OnClickListener{
 	static final String TAG = "EmulatorActivity";
 	
-	static final String ACTION_SMS_SENT = "com.mrpej.mrpoid.SMS_SENT_ACTION";
+	static final String ACTION_SMS_SENT = "com.mrpoid.SMS_SENT_ACTION";
 	
 	static final int MSG_ID_SHOWEDIT = 1001,
 		MSG_ID_UPDATE = 1002,
@@ -98,12 +95,11 @@ public class EmulatorActivity extends FragmentActivity implements
 	
 	
 	private TextView tvMemory, tvInfo;
-	private EmulatorView emulatorView;
+	private EmulatorSurface emulatorView;
 	private Emulator emulator;
 	public Handler handler;
 	private LayoutInflater inflater;
 	private SmsReceiver mSmsReceiver;
-	private BroadcastReceiver mReceiver;
 	private ViewGroup continer;
 	private KeypadView padView;
 	private boolean mPaused;
@@ -178,9 +174,9 @@ public class EmulatorActivity extends FragmentActivity implements
 		vibrator = (Vibrator)getSystemService(Context.VIBRATOR_SERVICE);
 		
 		emulator = Emulator.getInstance();
-		emulator.setEmulatorActivity(this);
+		emulator.attachActivity(this);
 		
-		emulatorView = new EmulatorView(this);
+		emulatorView = new EmulatorSurface(this);
 		emulatorView.setBackgroundColor(Color.TRANSPARENT);
 		continer =  (ViewGroup) findViewById(R.id.contener);
 		continer.addView(emulatorView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -195,7 +191,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		//短信模块初始化
 		smsInit();
 
-		if(Prefer.showMemInfo){
+		if(Prefer.showMemInfo) {
 			showMenInfo();
 		}
 
@@ -313,11 +309,9 @@ public class EmulatorActivity extends FragmentActivity implements
 			if(curMrpPath != null){
 				EmuLog.i(TAG, "异常恢复成功");
 				
-				File path = EmuPath.getInstance().getFullFilePath(curMrpPath);
+				File path = Emulator.getInstance().getFullFilePath(curMrpPath);
 				
-				MrpFile mrpFile = new MrpFile(path);
-				mrpFile.setAppName("冒泡社区");
-				Emulator.getInstance().setRunMrp(curMrpPath, mrpFile);
+				Emulator.getInstance().setRunMrp(curMrpPath);
 			} else {
 				finish();
 			}
@@ -329,44 +323,44 @@ public class EmulatorActivity extends FragmentActivity implements
 	}
 	
 	//-----------------------------------------------------------------
+	final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			String message = null;
+			boolean error = true;
+			
+			switch (getResultCode()) {
+			case Activity.RESULT_OK:
+				message = "发送成功!";
+				error = false;
+				break;
+				
+			case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
+				message = "失败: 未知错误.";
+				break;
+				
+			case SmsManager.RESULT_ERROR_NO_SERVICE:
+				message = "失败: 短信服务不可用.";
+				break;
+				
+			case SmsManager.RESULT_ERROR_NULL_PDU:
+				message = "失败: PDU 空.";
+				break;
+				
+			case SmsManager.RESULT_ERROR_RADIO_OFF:
+				message = "失败: 网络错误.";
+				break;
+			}
+			
+			//通知底层结果
+			emulator.vm_event(MrDefines.MR_SMS_RESULT, error? MrDefines.MR_FAILED : MrDefines.MR_SUCCESS, 0);
+			
+			Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+		}
+	};
+	
 	private void smsInit() {
 		mSmsReceiver = new SmsReceiver(this);
-		
-		mReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String message = null;
-                boolean error = true;
-                
-                switch (getResultCode()) {
-                case Activity.RESULT_OK:
-                    message = "发送成功!";
-                    error = false;
-                    break;
-                    
-                case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
-                    message = "失败: 未知错误.";
-                    break;
-                    
-                case SmsManager.RESULT_ERROR_NO_SERVICE:
-                    message = "失败: 短信服务不可用.";
-                    break;
-                    
-                case SmsManager.RESULT_ERROR_NULL_PDU:
-                    message = "失败: PDU 空.";
-                    break;
-                    
-                case SmsManager.RESULT_ERROR_RADIO_OFF:
-                    message = "失败: 网络错误.";
-                    break;
-                }
-                
-                //通知底层结果
-                emulator.vm_event(MrDefines.MR_SMS_RESULT, error? MrDefines.MR_FAILED : MrDefines.MR_SUCCESS, 0);
-
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-            }
-        };
 		
 		// Register broadcast receivers for SMS sent and delivered intents
 		registerReceiver(mReceiver, new IntentFilter(ACTION_SMS_SENT));
@@ -756,7 +750,7 @@ public class EmulatorActivity extends FragmentActivity implements
 	public void reqSendSms(final String text, final String addr) {
 		AlertDialog dialog = new AlertDialog.Builder(this)
 			.setTitle(R.string.hint)
-			.setMessage(emulator.getCurMrpFile().getAppName() 
+			.setMessage(emulator.getCurMrpAppName()
 					+ "请求发送短信：\n"
 					+ "地址：" + addr + "\n"
 					+ "内容：" + text + "\n")
@@ -793,7 +787,7 @@ public class EmulatorActivity extends FragmentActivity implements
 	public void reqCallPhone(final String number) {
 		new AlertDialog.Builder(this)
 			.setTitle(R.string.hint)
-			.setMessage(emulator.getCurMrpFile().getAppName() 
+			.setMessage(emulator.getCurMrpAppName()
 					+ "请求拨打：\n" 
 					+ number)
 			.setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {

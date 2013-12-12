@@ -25,11 +25,11 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.mrpoid.R;
-import com.mrpoid.core.EmuPath;
-import com.mrpoid.core.EmuPath.OnPathChangeListener;
+import com.mrpoid.core.Emulator;
+import com.mrpoid.core.Emulator.OnPathChangeListener;
 import com.mrpoid.core.MrpScreen;
 import com.mrpoid.core.Prefer;
-import com.mrpoid.ui.PathPreference;
+import com.mrpoid.filelist.PathPreference;
 import com.yichou.common.sdk.SdkUtils;
 import com.yichou.common.utils.FileUtils;
 
@@ -50,7 +50,6 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 	private CheckBoxPreference chkPrivate;
 	private ListPreference lpScnSize;
 	private String oldScnSize;
-	private EmuPath emuPath;
 	private SharedPreferences sp;
 	
 	
@@ -72,8 +71,6 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 		} catch (Exception e) {
 		}
 		
-		emuPath = EmuPath.getInstance();
-		
 		Intent intent = new Intent(this, HelpActivity.class);
 		intent.setData(Uri.parse(getString(R.string.setup_wizard_uri)));
 		findPreference("setupWizard").setIntent(intent);
@@ -90,15 +87,16 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 		
 		chkpMulti = (CheckBoxPreference) findPreference(Prefer.KEY_MULTI_PATH);
 		chkpMulti.setOnPreferenceChangeListener(this);
+		
+		Emulator emulator = Emulator.getInstance();
 
 		epSD = (PathPreference)findPreference(Prefer.KEY_SDCARD_PATH);
-		epSD.setSummary(emuPath.getSDPath());
+		epSD.setSummary(emulator.getVmRootPath());
 		epSD.setOnPreferenceChangeListener(this);
 		epSD.setEnabled(FileUtils.isSDMounted());
-		epSD.setDefaultValue(EmuPath.DEF_SD_PATH);
-//		epSD.setPath(emuPath.getSDPath());
+		epSD.setDefaultValue(Emulator.SDCARD_ROOT);
 		{
-			String sd = EmuPath.DEF_SD_PATH;
+			String sd = Emulator.SDCARD_ROOT;
 			
 			int l = sd.length();
 			if(sd.charAt(l - 1) == File.separatorChar){
@@ -119,27 +117,27 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 		}
 		
 		epMythroad = (PathPreference) findPreference(Prefer.KEY_MYTHROAD_PATH);
-		epMythroad.setSummary(emuPath.getMythroadPath());
+		epMythroad.setSummary(emulator.getVmWorkPath());
 		epMythroad.setOnPreferenceChangeListener(this);
 		epMythroad.setEnabled(!chkpMulti.isChecked());
-		epMythroad.setDefaultValue(EmuPath.DEF_MYTHROAD_DIR);
+		epMythroad.setDefaultValue(Emulator.DEF_WORK_PATH);
 //		if(!chkpMulti.isChecked())
 //			epMythroad.setPath(emuPath.getMythroadPath());
 		{
-			epMythroad.setDefRoot(emuPath.getSDPath());
-			epMythroad.setDefDir(emuPath.getMythroadPath());
+			epMythroad.setDefRoot(emulator.getVmRootPath());
+			epMythroad.setDefDir(emulator.getVmWorkPath());
 		}
 		
 		chkPrivate = (CheckBoxPreference) findPreference(Prefer.KEY_USE_PRIVATE_DIR);
 		chkPrivate.setOnPreferenceChangeListener(this);
 		
-		emuPath.addOnPathChangeListener(this);
+		emulator.addOnPathChangeListener(this);
 	}
 	
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		emuPath.removeOnPathChangeListener(this);
+		Emulator.getInstance().removeOnPathChangeListener(this);
 		sp.unregisterOnSharedPreferenceChangeListener(this);
 	}
 
@@ -280,8 +278,8 @@ public class EmuPreferenceActivity extends PreferenceActivity implements
 
 	@Override
 	public void onPathChanged(String newPath, String oldPath) {
-		epMythroad.setSummary(emuPath.getMythroadPath());
-		epSD.setSummary(emuPath.getSDPath());
+		epSD.setSummary(Emulator.getInstance().getVmRootPath());
+		epMythroad.setSummary(Emulator.getInstance().getVmWorkPath());
 	}
 
 	@Override

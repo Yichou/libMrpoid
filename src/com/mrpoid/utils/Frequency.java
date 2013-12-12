@@ -1,4 +1,4 @@
-package com.mrpoid.services;
+package com.mrpoid.utils;
 
 import java.util.ArrayList;
 import java.util.HashMap;

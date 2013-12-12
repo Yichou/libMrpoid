@@ -21,6 +21,66 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 	public static final long SD_RESERVE_SIZE = 1024*1024*4;		//SD卡剩余空间小于这个值时, 不再创建新文件
 	public static final long ROM_RESERVE_SIZE = 1024*1024*2;	//ROM剩余空间小于这个值时, 不再创建新文件
 	
+	public static final String KEY_USE_PRIVATE_DIR = "usePrivateDir";
+	public static final String KEY_ANTI_ATIAL = "enableAntiAtial";
+	public static final String KEY_MYTHROAD_PATH = "mythroadPath";
+	public static final String KEY_SDCARD_PATH = "sdpath";
+	public static final String KEY_ENABLE_KEY_VIRB = "enableKeyVirb";
+	public static final String KEY_MEM_SIZE= "memSize";
+	public static final String KEY_EXRAM= "enableExram";
+	public static final String KEY_SCALING_MODE= "scalingMode";
+	public static final String KEY_SCN_SIZE= "screensize";
+	public static final String KEY_AUTO_UPDATE= "autoUpdate";
+	public static final String KEY_SHOW_STATUSBAR= "showStatusBar";
+	public static final String KEY_LAST_UPDATE_TIME = "lastUpdateTime";
+	public static final String KEY_MULTI_PATH= "runUnderMultiPath";
+	public static final String KEY_LIMIT_INPUT_LENGTH = "limitInputLength";
+	
+	public static boolean enableKeyVirb = true;
+	public static boolean fullScnEditor = false;
+	public static boolean catchVolumekey = false;
+	public static boolean dpadAtLeft = false;
+	public static boolean autoUpdate = false;
+	public static boolean notHintAdvSet = false;
+	public static int lrbX, lrbY;
+	public static boolean enableAntiAtial = true;
+	public static int screenOrientation;
+	public static boolean enableSound;
+	public static boolean showStatusBar;
+	public static boolean noKey;
+	public static boolean showMemInfo;
+	public static boolean showFloatButton;
+	public static boolean showMenu = true;
+	public static boolean limitInputLength = true;
+	public static boolean usePrivateDir = false;
+	public static String mythoadPath = "";
+	public static String sdPath = "";
+	public static String privateDir;
+	
+	
+	/**
+	 * 不同分辨率在不同目录下运行
+	 * 
+	 * <p>如果为 true：
+	 * 		1.ROOT_DIR = DEF_ROOT_DIR + 分辨率 </p>
+	 * 
+	 * <p>如果为 false:
+	 * 		1.ROOT_DIR</p>
+	 */
+	public static boolean differentPath;
+	public static int volume;
+
+	/**
+	 * 状态栏高度
+	 */
+	public static int statusBarHeight;
+	
+	/**
+	 * 键盘透明度
+	 */
+	public static int keypadOpacity;
+	
+	
 //	private Context context;
 	public SharedPreferences sp;
 	private boolean bInited; //初始化标志
@@ -47,7 +107,6 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		
 		Editor e = sp.edit();
 
-//		e.putInt("theme", THEME==R.style.Theme_Sherlock_Light? 1 : 0);
 		e.putInt("keypadMode", Keypad.getInstance().getMode());
 		e.putInt("lrbX", lrbX);
 		e.putInt("lrbY", lrbY);
@@ -68,8 +127,6 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		lrbY = sp.getInt("lrbY", 1);
 		keypadOpacity = sp.getInt("keypadOpacity", 0xf0);
 		notHintAdvSet = sp.getBoolean("notHintAdvSet", false);
-		
-//		THEME = sp.getInt("theme", 0)==1? R.style.Theme_Sherlock_Light : R.style.Theme_Sherlock;
 	}
 
 	// apilog 选项
@@ -98,6 +155,8 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		if(bInited) return;
 		
 		bInited = true;
+		
+		context = context.getApplicationContext();
 		
 		Point scSize = EmuUtils.getScreenSize(context.getResources());
 		
@@ -129,8 +188,8 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		limitInputLength = sp.getBoolean("showFloatButton", false);
 		enableKeyVirb = sp.getBoolean(KEY_ENABLE_KEY_VIRB, true);
 		usePrivateDir = sp.getBoolean(KEY_USE_PRIVATE_DIR, false);
-		sdPath = sp.getString(KEY_SDCARD_PATH, EmuPath.DEF_SD_PATH);
-		mythoadPath = sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR);
+		sdPath = sp.getString(KEY_SDCARD_PATH, Emulator.SDCARD_ROOT);
+		mythoadPath = sp.getString(KEY_MYTHROAD_PATH, Emulator.DEF_WORK_PATH);
 		privateDir = context.getFilesDir().getAbsolutePath() + "/"; //以 / 结尾
 		
 		Emulator emulator = Emulator.getInstance();
@@ -144,7 +203,7 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		emulator.native_setIntOptions("memSize", Integer.valueOf(sp.getString(KEY_MEM_SIZE, DEF_MEM_SIZE))); //虚拟机内存 单位 M
 
 		//模拟器路径初始化
-		EmuPath.getInstance().init();
+		Emulator.getInstance().initPath();
 
 		// api log
 		emulator.native_setIntOptions("enableApilog", sp.getBoolean("enableApilog", false) ? 1 : 0);
@@ -195,10 +254,6 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			volume = sp.getInt("volume", 100);
 		} else if (key.equals("orientation")) {
 
-		} else if (key.equals("theme")) {
-
-		} else if (key.equals("thread")) {
-			emulator.setThreadMod(Integer.valueOf(sp.getString(key, "0")));
 		} else if (key.equals(KEY_SHOW_STATUSBAR)) {
 			showStatusBar = sp.getBoolean(key, false);
 		}  else if (key.equals("showMemInfo")) {
@@ -209,20 +264,17 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			dpadAtLeft = sp.getBoolean(key, false);
 		} else if (key.equals("fullScnEditor")) {
 			fullScnEditor = sp.getBoolean(key, false);
-		} else if (key.equals(KEY_SDCARD_PATH)) 
-		{
-			sdPath = sp.getString(KEY_SDCARD_PATH, EmuPath.DEF_SD_PATH);
-			EmuPath.getInstance().setSDPath(sdPath);
-		} else if (key.equals(KEY_MYTHROAD_PATH)) 
-		{
-			mythoadPath = sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR);
-			EmuPath.getInstance().setMythroadPath(mythoadPath);
-		} else if (key.equals(KEY_SCN_SIZE))
-		{
+		} else if (key.equals(KEY_SDCARD_PATH)) {
+			sdPath = sp.getString(KEY_SDCARD_PATH, Emulator.SDCARD_ROOT);
+			Emulator.getInstance().setVmRootPath(sdPath);
+		} else if (key.equals(KEY_MYTHROAD_PATH)) {
+			mythoadPath = sp.getString(KEY_MYTHROAD_PATH, Emulator.DEF_WORK_PATH);
+			Emulator.getInstance().setVmWorkPath(mythoadPath);
+		} else if (key.equals(KEY_SCN_SIZE)) {
 			MrpScreen.parseScreenSize(sp.getString(key, "240x320"));
 			
-			if(differentPath){
-				EmuPath.getInstance().setMythroadPath( EmuPath.DEF_MYTHROAD_DIR + MrpScreen.getSizeTag() + "/");
+			if (differentPath) {
+				Emulator.getInstance().setVmWorkPath(Emulator.DEF_WORK_PATH + MrpScreen.getSizeTag() + "/");
 			}
 		} else if (key.equals("showFloatButton")) {
 			showFloatButton = sp.getBoolean(key, false);
@@ -237,13 +289,7 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			
 			System.out.println("mutil = " + differentPath);
 			
-			EmuPath.getInstance().init();
-			
-//			if(differentPath){
-//				EmuPath.getInstance().setMythroadPath( EmuPath.DEF_MYTHROAD_DIR + MrpScreen.getSizeTag() + "/");
-//			}else {
-//				EmuPath.getInstance().setMythroadPath(sp.getString(KEY_MYTHROAD_PATH, EmuPath.DEF_MYTHROAD_DIR));
-//			}
+			Emulator.getInstance().initPath();
 		} else if (key.equals(KEY_AUTO_UPDATE)) {
 			autoUpdate = sp.getBoolean(KEY_AUTO_UPDATE, true);
 		} else if (key.equals(KEY_LAST_UPDATE_TIME)) {
@@ -261,7 +307,7 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 			
 			System.out.println("private = " + usePrivateDir);
 			
-			EmuPath.getInstance().init(); //重新初始化
+			Emulator.getInstance().initPath(); //重新初始化
 		} else {
 			//应该全部改为使用 native_setStringOptions() 这样可以避免转型失败
 			emulator.native_setIntOptions(key, sp.getBoolean(key, true) ? 1 : 0);
@@ -276,53 +322,6 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 		Emulator.getInstance().native_setIntOptions("platdrawchar", b? 1 : 0);
 	}
 	
-	///////////////////////////////////////////////////////
-	public static boolean enableKeyVirb = true;
-	public static boolean fullScnEditor = false;
-	public static boolean catchVolumekey = false;
-	public static boolean dpadAtLeft = false;
-	public static boolean autoUpdate = false;
-	public static boolean notHintAdvSet = false;
-	public static int lrbX, lrbY;
-	public static boolean enableAntiAtial = true;
-	public static int screenOrientation;
-	public static boolean enableSound;
-	public static boolean showStatusBar;
-	public static boolean noKey;
-	public static boolean showMemInfo;
-	public static boolean showFloatButton;
-	public static boolean showMenu = true;
-	public static boolean limitInputLength = true;
-	public static boolean usePrivateDir = false;
-	public static String mythoadPath = "";
-	public static String sdPath = "";
-	public static String privateDir;
-	
-	
-	/**
-	 * 不同分辨率在不同目录下运行
-	 * 
-	 * <p>如果为 true：
-	 * 		1.ROOT_DIR = DEF_ROOT_DIR + 分辨率 </p>
-	 * 
-	 * <p>如果为 false:
-	 * 		1.ROOT_DIR</p>
-	 */
-	public static boolean differentPath;
-	public static int volume;
-
-	/**
-	 * 状态栏高度
-	 */
-	public static int statusBarHeight;
-	
-	/**
-	 * 键盘透明度
-	 */
-	public static int keypadOpacity;
-	public static int THEME;
-	
-
 	public static void setScaleMode(String mode) {
 		MrpScreen.parseScaleMode(mode);
 	}
@@ -337,20 +336,4 @@ public class Prefer implements OnSharedPreferenceChangeListener {
 	public static void setShowMenu(boolean showMenu) {
 		Prefer.showMenu = showMenu;
 	}
-	
-	
-	public static final String KEY_USE_PRIVATE_DIR = "usePrivateDir";
-	public static final String KEY_ANTI_ATIAL = "enableAntiAtial";
-	public static final String KEY_MYTHROAD_PATH = "mythroadPath";
-	public static final String KEY_SDCARD_PATH = "sdpath";
-	public static final String KEY_ENABLE_KEY_VIRB = "enableKeyVirb";
-	public static final String KEY_MEM_SIZE= "memSize";
-	public static final String KEY_EXRAM= "enableExram";
-	public static final String KEY_SCALING_MODE= "scalingMode";
-	public static final String KEY_SCN_SIZE= "screensize";
-	public static final String KEY_AUTO_UPDATE= "autoUpdate";
-	public static final String KEY_SHOW_STATUSBAR= "showStatusBar";
-	public static final String KEY_LAST_UPDATE_TIME = "lastUpdateTime";
-	public static final String KEY_MULTI_PATH= "runUnderMultiPath";
-	public static final String KEY_LIMIT_INPUT_LENGTH = "limitInputLength";
 }

@@ -9,9 +9,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.mrpoid.core.EmuPath;
 import com.mrpoid.core.Emulator;
-import com.mrpoid.core.MrpFile;
 import com.yichou.common.utils.FileUtils;
 
 /**
@@ -52,10 +50,11 @@ public class ExternActivity extends Activity {
 			return;
 		}
 		
+		Emulator emulator = Emulator.getInstance();
 		String str = inputPath;
-		int i = str.indexOf(EmuPath.getInstance().getMythroadPath()); //是不是在当前模拟器工作目录下
+		int i = str.indexOf(emulator.getVmWorkPath()); //是不是在当前模拟器工作目录下
 		if (i == -1) { // 需要复制
-			File tempFile = EmuPath.getInstance().getFullFilePath(inputFile.getName());
+			File tempFile = emulator.getFullFilePath(inputFile.getName());
 			if (FileUtils.FAILED == FileUtils.copyTo(tempFile, inputFile)) {
 				showError("非 mythroad 下，复制文件失败！");
 				return;
@@ -63,14 +62,14 @@ public class ExternActivity extends Activity {
 			
 			str = inputPath = tempFile.getAbsolutePath();
 			inputFile = tempFile;
-			i = str.indexOf(EmuPath.getInstance().getMythroadPath()); //是不是在当前模拟器工作目录下
+			i = str.indexOf(emulator.getVmWorkPath()); //是不是在当前模拟器工作目录下
 		}
 
 		str = str.substring(i);
 		i = str.indexOf(File.separator);
 		str = str.substring(i + 1);
 
-		Emulator.startMrp(this, str, new MrpFile(Emulator.native_getAppName(inputPath)));
+		Emulator.startMrp(this, str);
 	}
 
 	@Override

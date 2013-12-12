@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2013 The Mrpoid Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.mrpoid.core;
 
 import java.io.File;
@@ -5,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -13,6 +30,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Handler.Callback;
 import android.os.Looper;
@@ -22,7 +40,9 @@ import android.widget.Toast;
 
 import com.mrpoid.R;
 import com.mrpoid.app.EmulatorActivity;
-import com.mrpoid.services.SmsUtil;
+import com.mrpoid.app.EmulatorSurface;
+import com.mrpoid.utils.SmsUtil;
+import com.yichou.common.utils.FileUtils;
 
 
 
@@ -35,146 +55,118 @@ import com.mrpoid.services.SmsUtil;
 public class Emulator implements Callback {
 	public static final String TAG = "Emulator";
 	
-	private static Emulator instance;
-
-	private Context context; 
-	public EmulatorView emulatorView;  
-	public EmulatorActivity emulatorActivity;
-	
-	/**
-	 * 运行在 mrp 线程的handle
-	 */
-	private Handler handler;
-	private EmuAudio audio;
-	private MrpScreen screen;
-	private MrpFile runMrpFile;
-	private String runMrpPath;
-	private Keypad mKeypad;
-	
-	private int threadMod = THREAD_MAIN;
-	private boolean running;
-	private boolean bInited;
-	
-	public int N2J_charW, N2J_charH; //这2个值保存 每次measure的结果，底层通过获取这2个值来获取尺寸
-	public int N2J_memLen, N2J_memLeft, N2J_memTop;
-	
-	
-	private static boolean soLoded = false;
-	
-	private int state;
-	public static final int STA_NOR = 0, 
-					 STA_SHOWEDIT = 1,
-					 STA_PAUSE = 2;
+	public static final String SDCARD_ROOT = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separatorChar;
+	public static final String DEF_WORK_PATH = "mythroad/";
+	public static final String PUBLIC_STROAGE_PATH = SDCARD_ROOT + "Mrpoid/";
+	public static final int DEF_MIN_SDCARD_SACE_MB = 8;
 	
 	private static final int MSG_TIMER_OUT = 0x0001,
 		MSG_CALLBACK = 0x0002,
 		MSG_MR_SMS_GET_SC = 0x0003;
+
+	private Context context; 
+	private EmulatorSurface emulatorView;  
+	private EmulatorActivity emulatorActivity;
+	private Handler handler;
+	private EmuAudio audio;
+	private MrpScreen screen;
+	private String runMrpPath;
+	private Keypad mKeypad;
+	private boolean running;
+	private boolean bInited;
+	private Timer timer;
+	private TimerTask task; 
+	
+	
+	/**
+	 * end with /
+	 */
+	private String mVmRoot = SDCARD_ROOT;
+	private String mLastVmRoot = SDCARD_ROOT;
+	
+	/**
+	 * end with /
+	 */
+	private String mWorkPath = DEF_WORK_PATH;
+	private String mLastWorkPath = DEF_WORK_PATH;
+	
+	private final List<OnPathChangeListener> pathListeners = new ArrayList<OnPathChangeListener>();
+	
+	//--- native params below --------
+	public int N2J_charW, N2J_charH; //这2个值保存 每次measure的结果，底层通过获取这2个值来获取尺寸
+	public int N2J_memLen, N2J_memLeft, N2J_memTop;
 	
 	
 	static {
 		System.loadLibrary("mrpoid"); 
 	}
 	
+	private static final Emulator instance = new Emulator();
+	public static Emulator getInstance(){
+		return instance;
+	}
+
 	private Emulator() {
 	}
 
 	/**
-	 * 用在没有上下文对象的地方获取 模拟器实例，调用此方法的时候，模拟器必须已经初始化
-	 * 
-	 * @return 模拟器实例
+	 * memory recyle when exit
 	 */
-	public static Emulator getInstance(){
-		if(instance == null)
-			instance = new Emulator();
-		
-		return instance;
+	public synchronized void recyle() {
+		native_destroy();
+		audio.recyle();
+		screen.recyle();
+		bInited = false;
 	}
 	
-	/**
-	 * 销毁实例
-	 * 
-	 * native 层也将是释放，应该在整个程序退出时调用
-	 */
-	public static void releaseInstance() {
-		if (instance != null) {
-			instance.native_destroy();
-			instance.audio.dispose();
-			instance.screen.dispose();
-			instance = null;
+	private synchronized void checkInit() {
+		if (bInited) return;
+		
+		screen = new MrpScreen(this);
+		audio = new EmuAudio(context, this);
+		try {
+			EmuLog.i(TAG, "call native_create tid=" + Thread.currentThread().getId());
+			native_create(screen, audio);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-	}
-	
-	/**
-	 * 启动虚拟机并运行 mrp
-	 * 
-	 * @param context
-	 * @param mrpPath 要运行的 mrp 路径，相对于 mythroad
-	 * @param mrpFile MrpFile 实例
-	 */
-	public static void startMrp(Context context, String mrpPath, MrpFile mrpFile) {
-		EmuLog.i(TAG, "startMrp(" + mrpPath + ", " + mrpFile + ")");
 		
-		Emulator emulator = getInstance();
-		if(emulator != null) {
-			if(!emulator.isInited())
-				emulator.init(context);
-			emulator.setRunMrp(mrpPath, mrpFile);;
-			Intent intent = new Intent(context, EmulatorActivity.class);
-			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			context.startActivity(intent);
-		}
-	}
-	
-	/////////////////////////////////////////////////////////
-	public Emulator init(final Context context) {
-		this.context = context.getApplicationContext();
-		
-		synchronized (this) {
-			if(bInited)
-				return this;
-			
-			screen = new MrpScreen(this);
-			audio = new EmuAudio(context, this);
-			try {
-				EmuLog.i(TAG, "call native_create tid=" + Thread.currentThread().getId());
-				native_create(screen, audio);
-			} catch (Exception e) {
-				e.printStackTrace();
+		// 起线程获取短信中心
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				String N2J_smsCenter = SmsUtil.getSmsCenter(context);
+				native_setStringOptions("smsCenter", N2J_smsCenter);
+				EmuLog.i(TAG, "smsCenter: " + N2J_smsCenter);
 			}
-			
-			//起线程获取短信中心
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
-					String N2J_smsCenter = SmsUtil.getSmsCenter(context);
-					native_setStringOptions("smsCenter", N2J_smsCenter);
-					EmuLog.i(TAG, "smsCenter: " + N2J_smsCenter);
-				}
-			}).start();
-			
-			bInited = true;
-		}
+		}).start();
 		
-		return this;
+		bInited = true;
 	}
 	
 	public boolean isInited() {
 		return bInited;
 	}
 	
-	public void setEmulatorActivity(EmulatorActivity emulatorActivity) {
+	public void attachApplicationContext(Context context) {
+		this.context = context.getApplicationContext();
+		checkInit();
+	}
+	
+	public void attachActivity(EmulatorActivity emulatorActivity) {
+		attachApplicationContext(emulatorActivity);
 		this.emulatorActivity = emulatorActivity;
 	}
 	
-	public EmulatorActivity getEmulatorActivity() {
+	public EmulatorActivity getActivity() {
 		return emulatorActivity;
 	}
 	
-	public void setEmulatorView(EmulatorView emulatorView) {
+	public void attachSurface(EmulatorSurface emulatorView) {
 		this.emulatorView = emulatorView;
 	}
 	
-	public EmulatorView getEmulatorView() {
+	public EmulatorSurface getSurface() {
 		return emulatorView;
 	}
 	
@@ -202,40 +194,48 @@ public class Emulator implements Callback {
 	 * 设置即将运行的 MRP
 	 * @param runMrpPath
 	 */
-	public void setRunMrp(String path, MrpFile file) {
-		this.runMrpPath = path;
-		if(file == null){
-			runMrpFile = new MrpFile(new File(runMrpPath));
-			runMrpFile.setAppName("冒泡社区");
+	public void setRunMrp(String path) {
+		System.out.println("inputPah=" + path);
+		
+		//1.是不是绝对路径
+		if(path.startsWith(SDCARD_ROOT)) {
+			final int i = path.indexOf(getVmWorkPath());
+			if(i != -1) {
+				int l = getVmWorkPath().length();
+				path = path.substring(i + l);
+				
+				System.out.println("newPath=" + path);
+			} else { //需要复制
+				final int j = path.lastIndexOf(File.separatorChar);
+				final String vpath = path.substring(j+1);
+
+				File dstFile = getFullFilePath(vpath);
+				
+				System.out.println("复制文件： " + path + " to " + dstFile);
+				
+				if (FileUtils.FAILED == FileUtils.copyTo(dstFile, new File(path))) {
+					throw new RuntimeException("file path invalid, copy file to VmWorkPath fail!");
+				}
+				
+				path = vpath;
+			}
 		}
-		this.runMrpFile = file;
+		
+		System.out.println("final path=" + path);
+		
+		this.runMrpPath = path;
 	}
 	
 	public String getCurMrpPath() {
 		return runMrpPath;
 	}
-	
-	public MrpFile getCurMrpFile() {
-		if(runMrpFile == null){
-			runMrpFile = new MrpFile("安卓冒泡");
-		}
-		return runMrpFile;
+
+	public String getCurMrpAppName() {
+		return native_getAppName(getFullPath() + runMrpPath);
 	}
 	
 	public boolean isRunning() {
 		return running;
-	}
-	
-	public static final int THREAD_MAIN=0,
-//		THREAD_JAVA=1,
-		THREAD_NATIVE=2;
-	
-	public void setThreadMod(int threadMod) {
-		this.threadMod = threadMod;
-	}
-	
-	public boolean isNativeThread() {
-		return threadMod == THREAD_NATIVE;
 	}
 	
 	@Override
@@ -263,7 +263,7 @@ public class Emulator implements Callback {
 	}
 	
 	/**
-	 * 启动 mrp 虚拟机
+	 * after EmulatorSurface has created 启动 mrp 虚拟机
 	 */
 	public void start() {
 		if(runMrpPath == null){
@@ -271,23 +271,8 @@ public class Emulator implements Callback {
 			return;
 		}
 		
-		if(emulatorActivity == null || emulatorView == null){
-			Toast.makeText(context, "运行环境错误，即将退出！", Toast.LENGTH_SHORT).show();
-			
-			if(emulatorActivity != null)
-				emulatorActivity.finish();
-			else
-				android.os.Process.killProcess(android.os.Process.myPid());
-			
-			return;
-//			throw new RuntimeException("emulator run Context not set!");
-		}
-		
 		EmuLog.i(TAG, "start");
 		
-		Prefer.getInstance().init(emulatorActivity);
-		
-		audio.init();
 		screen.init();
 		timer = new Timer();
 		handler = new Handler(this);
@@ -300,11 +285,7 @@ public class Emulator implements Callback {
 			path = "%" + runMrpPath;
 		}
 
-		if(threadMod == THREAD_NATIVE){
-			vm_loadMrp_thread(path);
-		} else {
-			vm_loadMrp(path);
-		}
+		vm_loadMrp(path);
 	}
 	
 	/**
@@ -318,7 +299,6 @@ public class Emulator implements Callback {
 	}
 	
 	public void pause() {
-		state = STA_PAUSE;
 		audio.pause();
 		screen.pause();
 		native_pause();
@@ -334,12 +314,7 @@ public class Emulator implements Callback {
 	 * 强制停止 MRP 虚拟机
 	 */
 	public void stopFoce() {
-		if(threadMod == THREAD_NATIVE){ 
-			vm_exit_foce();
-		} else {
-			stop();
-//			android.os.Process.killProcess(android.os.Process.myPid());
-		}
+		stop();
 	}
 	
 	/**
@@ -357,6 +332,8 @@ public class Emulator implements Callback {
 		handler = null;
 		
 		//下面这些都线程安全吗？
+		N2J_timerStop();
+		
 		if(timer != null){
 			timer.cancel();
 			timer = null;
@@ -379,29 +356,21 @@ public class Emulator implements Callback {
 		
 		emulatorView.flush();
 	}
-
-	private Timer timer;
-	private TimerTask task; 
+	
+	private final class MrTimerTask extends TimerTask {
+		@Override
+		public void run() {
+			handler.sendEmptyMessage(MSG_TIMER_OUT);
+		}
+	}
 
 	private void N2J_timerStart(short t) {
 		if (!running)
 			return;
 
-		task = new TimerTask() {
-			@Override
-			public void run() {
-				handler.sendEmptyMessage(MSG_TIMER_OUT);
-			}
-		};
+		task = new MrTimerTask();
 		timer.schedule(task, t);
 	}
-	
-	private Runnable timeRunnable = new Runnable() {
-		@Override
-		public void run() {
-			vm_timeOut();
-		}
-	};
 	
 	private void N2J_timerStop() {
 		if(!running) return;
@@ -410,9 +379,7 @@ public class Emulator implements Callback {
 			task.cancel();
 			task = null;
 		}
-		if(timer != null) {
-			timer.purge();
-		}
+		timer.purge();
 	}
 	
 	/**
@@ -445,16 +412,7 @@ public class Emulator implements Callback {
 	 * @param max 最大值
 	 */
 	private void N2J_showEdit(final String title, final String content, final int type, final int max) {
-		if(threadMod != THREAD_MAIN){
-			emulatorActivity.runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					emulatorActivity.createEdit(title, content, type, max);
-				}
-			});
-		}else {
-			emulatorActivity.createEdit(title, content, type, max);
-		}
+		emulatorActivity.createEdit(title, content, type, max);
 	}
 	
 	/**
@@ -677,6 +635,204 @@ public class Emulator implements Callback {
 		
 		handler.sendMessageDelayed(handler.obtainMessage(what, p0, p1), delay);
 	}
+	
+	
+	//-----------------------------------------------------------
+	public static interface OnPathChangeListener {
+		public void onPathChanged(String newPath, String oldPath);
+	}
+	
+	public void initPath() {
+		if(!FileUtils.isSDAvailable(DEF_MIN_SDCARD_SACE_MB)) {
+			Prefer.usePrivateDir = true;
+//			Toast.makeText(context, "没有SD卡！", Toast.LENGTH_SHORT).show();
+		}
+		
+		if (Prefer.usePrivateDir) { // 使用私有目录
+			setVmRootPath(Prefer.privateDir);
+		} else {
+			setVmRootPath(Prefer.sdPath);
+		}
+		
+		if (Prefer.differentPath) { // 不同路径
+			setVmWorkPath(DEF_WORK_PATH + MrpScreen.getSizeTag() + "/");
+		} else {
+			setVmWorkPath(Prefer.mythoadPath);
+		}
+		
+		EmuLog.i(TAG, "sd path = " + mVmRoot);
+		EmuLog.i(TAG, "mythroad path = " + mWorkPath);
+	}
+	
+	public void addOnPathChangeListener(OnPathChangeListener l) {
+		pathListeners.add(l);
+	}
+	
+	public void removeOnPathChangeListener(OnPathChangeListener l) {
+		pathListeners.remove(l);
+	}
+	
+	private void notifyListeners() {
+		for(OnPathChangeListener l : pathListeners){
+			l.onPathChanged(mVmRoot + mWorkPath, mLastVmRoot + mLastWorkPath);
+		}
+	}
+	
+	/**
+	 * 获取默认运行根目录的完整路径
+	 * 
+	 * @return 绝对路径 /结尾
+	 */
+	public String getDefFullPath() {
+		return (SDCARD_ROOT + DEF_WORK_PATH);
+	}
+	
+	/**
+	 * 获取运行根目录的完整路径
+	 * 
+	 * @return 绝对路径 /结尾
+	 */
+	public String getFullPath() {
+		return (mVmRoot + mWorkPath);
+	}
+	
+	/**
+	 * 获取上一次成功改变，运行根目录的绝对路径
+	 * 
+	 * @return 绝对路径 /结尾
+	 */
+	public String getLastFullPath() {
+		return (mLastVmRoot + mLastWorkPath);
+	}
+	
+	/**
+	 * 获取运行目录下的一个文件
+	 * 
+	 * @param name 文件名
+	 * 
+	 * @return
+	 */
+	public File getFullFilePath(String name) {
+		return new File(mVmRoot + mWorkPath, name);
+	}
+	
+	/**
+	 * 获取公共目录下存储的文件
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public static File getPublicFilePath(String name){
+		File file = new File(PUBLIC_STROAGE_PATH);
+		FileUtils.createDir(file);
+		return new File(PUBLIC_STROAGE_PATH, name);
+	}
+	
+	/**
+	 * SD卡根目录，该目录必须可以创建
+	 * 
+	 * @param tmp
+	 */
+	public void setVmRootPath(String tmp) {
+		if (tmp == null || tmp.length() == 0) {
+			EmuLog.e(TAG, "setSDPath: input error!");
+			return;
+		}
+		
+		if(mVmRoot.equals(tmp))
+			return;
+		
+		File path = new File(tmp);
+		if (FileUtils.SUCCESS != FileUtils.createDir(path)) {
+			EmuLog.e(TAG, "setSDPath: " + path.getAbsolutePath() + " mkdirs FAIL!");
+			return;
+		}
+		
+		if(!path.canRead() || !path.canWrite()) {
+			EmuLog.e(TAG, "setSDPath: " + path.getAbsolutePath() + " can't read or write!");
+			return;
+		}
+		
+		int i = tmp.length();
+		if(tmp.charAt(i-1) != '/'){
+			tmp += '/';
+		}
+		
+		mLastVmRoot = mVmRoot;
+		mVmRoot = tmp;
+		Emulator.getInstance().native_setStringOptions("sdpath", mVmRoot);
+		
+		notifyListeners();
+
+		EmuLog.i(TAG, "sd path has change to: " + mVmRoot);
+	}
+	
+	public String getVmRootPath() {
+		return mVmRoot;
+	}
+	
+	/**
+	 * 理论上 mythroad 路径可以为 "" 表示SD卡根目录，这里为了避免麻烦，还是让他不可以
+	 * 
+	 * @param tmp
+	 */
+	public void setVmWorkPath(String tmp) {
+		if (tmp == null || tmp.length() == 0) {
+			EmuLog.e(TAG, "setMythroadPath: input error!");
+			return;
+		}
+		
+		if(mWorkPath.equals(tmp))
+			return;
+		
+		File path = new File(mVmRoot, tmp);
+		if (FileUtils.SUCCESS != FileUtils.createDir(path)) {
+			EmuLog.e(TAG, "setMythroadPath: " + path.getAbsolutePath() + " mkdirs FAIL!");
+			return;
+		}
+		
+		if(!path.canRead() || !path.canWrite()) {
+			EmuLog.e(TAG, "setMythroadPath: " + path.getAbsolutePath() + " can't read or write!");
+			return;
+		}
+
+		int i = tmp.length();
+		if (tmp.charAt(i - 1) != '/') {
+			tmp += "/";
+		}
+		mLastWorkPath = mWorkPath;
+		mWorkPath = tmp;
+		Emulator.getInstance().native_setStringOptions("mythroadPath", mWorkPath);
+
+		notifyListeners();
+
+		EmuLog.i(TAG, "mythroad path has change to: " + mWorkPath);
+	}
+	
+	public String getVmWorkPath(){
+		return mWorkPath;
+	}
+	
+	//-----------------------------------------------------------
+
+	/**
+	 * 启动虚拟机并运行 mrp
+	 * 
+	 * @param context
+	 * @param mrpPath 要运行的 mrp 路径，相对于 mythroad
+	 * @param mrpFile MrpFile 实例
+	 */
+	public static void startMrp(Context context, String mrpPath) {
+		EmuLog.i(TAG, "startMrp(" + mrpPath + ")");
+		
+		instance.attachApplicationContext(context);
+		instance.setRunMrp(mrpPath);;
+		
+		Intent intent = new Intent(context, EmulatorActivity.class);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		context.startActivity(intent);
+	}
+
 
 	/// ////////////////////////////////////////
 	public native void native_create(MrpScreen mrpScreen, EmuAudio emuAudio);

@@ -19,13 +19,11 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
-import android.os.Binder;
 import android.os.IBinder;
 
 import com.mrpoid.R;
 import com.mrpoid.core.Emulator;
 import com.yichou.common.utils.InternalID;
-import com.yichou.common.utils.UIUtils;
 
 
 /**
@@ -38,16 +36,7 @@ public class EmuService extends Service {
 	public static final String ACTION_FOREGROUND = "com.androidemu.actions.FOREGROUND";
 	public static final String ACTION_BACKGROUND = "com.androidemu.actions.BACKGROUND";
     
-	public class LocalBinder extends Binder {
-		EmuService getService() {
-            return EmuService.this;
-        }
-    }
 	
-	// This is the object that receives interactions from clients.  See
-    // RemoteService for a more complete example.
-    private final IBinder mBinder = new LocalBinder();
-    
     @Override
     public void onCreate() {
     	super.onCreate();
@@ -55,7 +44,7 @@ public class EmuService extends Service {
 
 	@Override
 	public IBinder onBind(Intent intent) {
-		return mBinder;
+		return null;
 	}
 	
 	@Override
@@ -79,7 +68,7 @@ public class EmuService extends Service {
 			// 建立Notification，并设定相关参数
 			Notification n = new Notification(R.drawable.ic_notify_small, null, System.currentTimeMillis());
 			n.setLatestEventInfo(this, 
-					Emulator.getInstance().getCurMrpFile().getAppName(), 
+					Emulator.getInstance().getCurMrpAppName(), 
 					getString(R.string.hint_click_to_back), 
 					appIntent);
 			
@@ -99,6 +88,5 @@ public class EmuService extends Service {
     @Override
     public void onDestroy() {
     	stopForeground(true);
-    	UIUtils.ToastMessage(this, "I am killed!");
     }
 }

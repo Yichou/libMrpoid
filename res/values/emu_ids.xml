@@ -22,7 +22,7 @@
     <item type="id" name="mi_refresh"></item>
     <item type="id" name="mi_help"></item>
     <item type="id" name="mi_scnshot"></item>
-    <item type="id" name="mi_theme"></item>
+    
     <item type="id" name="mi_menu"></item>
     <item type="id" name="mi_include_dir"></item>
     <item type="id" name="mi_linux"></item>
@@ -39,8 +39,7 @@
     <item type="id" name="mi_keypad_opacity"></item>
     <item type="id" name="mi_switch_keypad"></item>
     <item type="id" name="mi_feedback"></item>
-    <item type="id" name="mi_theme_black"></item>
-    <item type="id" name="mi_theme_light"></item>
+    
     <item type="id" name="mi_key_sprite"></item>
     <item type="id" name="mi_tools"></item>
 </resources>

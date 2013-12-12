@@ -10,45 +10,90 @@ import android.os.Vibrator;
 /**
  * 声音播放管理器
  * 
- * @author JianbinZhu
+ * @author Yichou 2013-12-13 
+ * 
+ * <p>优化代码结构 2013-12-13 0:03:33
  *
  */
 public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	private static final String TAG = "EmuAudio";
 	
+	//meidia 接口编号区
+	public static final int MR_MEDIA_INIT = 201, 
+		MR_MEDIA_BUF_LOAD = 203, 
+		MR_MEDIA_FILE_LOAD = 202, 
+		MR_MEDIA_PLAY_CUR_REQ = 204, 
+		MR_MEDIA_PAUSE_REQ = 205, 
+		MR_MEDIA_RESUME_REQ = 206,
+		MR_MEDIA_STOP_REQ = 207, 
+		MR_MEDIA_CLOSE = 208, 
+		MR_MEDIA_GET_STATUS = 209, 
+		MR_MEDIA_SETPOS = 210, 
+		MR_MEDIA_GETTIME = 211, 
+		MR_MEDIA_GET_TOTAL_TIME = 212, 
+		MR_MEDIA_GET_CURTIME = 213,
+		MR_MEDIA_GET_CURTIME_MSEC = 215, 
+		MR_MEDIA_FREE = 216, 
+		MR_MEDIA_ALLOC_INRAM = 220, 
+		MR_MEDIA_FREE_INRAM = 221,
+		MR_MEDIA_OPEN_MUTICHANNEL = 222, 
+		MR_MEDIA_PLAY_MUTICHANNEL = 223,
+		MR_MEDIA_STOP_MUTICHANNEL = 224, 
+		MR_MEDIA_CLOSE_MUTICHANNEL = 225;
+	
 	private MediaPlayer mp3Player;
 	private MediaPlayer mediaPlayer;
-	
 	private boolean audioPaused = false;
 	private Emulator emulator;
+	private Vibrator vibrator;
+	private boolean recyled = false;
+	
+	private boolean needCallback = false;
+	private int pausePosition;
+	private int stat = MrDefines.MR_MEDIA_IDLE;
 	
 
-	public EmuAudio(Context context, Emulator emulator) {
-		this.emulator = emulator;
-		vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
+	@Override
+	public boolean onError(MediaPlayer mp, int what, int extra) {
+		EmuLog.e(TAG, String.format("onError(%d,%d)", what, extra));
+		if(needCallback){
+			emulator.native_callback(0x1001, 1); //ACI_PLAY_ERROR       1  //播放时遇到错误
+		}
+		
+		return false;
 	}
 	
-	public void init() {
+	@Override
+	public void onCompletion(MediaPlayer mp) {
+		EmuLog.i(TAG, "onCompletion");
+		
+		stat = MrDefines.MR_MEDIA_LOADED; //播放完成后的状态
+		if(needCallback){
+			emulator.native_callback(0x1001, 0); //ACI_PLAY_COMPLETE   0  //播放结束
+		}
+	}
+	
+	public EmuAudio(Context context, Emulator emulator) {
+		this.emulator = emulator;
+		
+		vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
 		mp3Player = new MediaPlayer();
 //		float v = Prefer.volume/100.0f;
 //		mp3Player.setVolume(v, v);
 	}
 	
-	public void recyle() {
+	public boolean isRecyled() {
+		return recyled;
+	}
+	
+	public synchronized void recyle() {
+		if(recyled)
+			return;
+		
 		if(mp3Player != null) {
 			mp3Player.release();
 			mp3Player = null;
 		}
-		
-		if(mediaPlayer != null) {
-			mediaPlayer.release();
-			mediaPlayer = null;
-		}
-	}
-
-	public void dispose() {
-		mp3Player.release();
-		mp3Player = null;
 		
 		if(mediaPlayer != null) {
 			mediaPlayer.release();
@@ -59,9 +104,13 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 			vibrator.cancel();
 			vibrator = null;
 		}
+		
+		recyled = true;
 	}
 	
 	public void pause() {
+		if(recyled) return;
+		
 		if(mp3Player != null && !audioPaused){
 			audioPaused = true;
 			mp3Player.pause();
@@ -76,6 +125,8 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	}
 	
 	public void resume() {
+		if(recyled) return;
+		
 		if(mp3Player != null && audioPaused){
 			audioPaused = false;
 			mp3Player.start();
@@ -87,6 +138,8 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	}
 	
 	public void stop() {
+		if(recyled) return;
+		
 		if(mp3Player != null && mp3Player.isPlaying()){
 			mp3Player.stop();
 			mp3Player.reset();
@@ -99,7 +152,8 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	}
 
 	public void N2J_playSound(String path, int loop) {
-//		if(!Prefer.enableSound) return;
+		if(recyled) return;
+		
 		if(path == null) return;
 
 		if(mp3Player == null)
@@ -121,6 +175,8 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	}
 	
 	public void N2J_stopSound() {
+		if(recyled) return;
+		
 		EmuLog.i(TAG, "stop sound");
 		
 		if(mp3Player.isPlaying()){
@@ -129,8 +185,9 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 		}
 	}
 	
-	/////////////////////////////////////////////////////////////////
 	public void N2J_musicLoadFile(String path) {
+		if(recyled) return;
+		
 		if(mediaPlayer == null || path == null) 
 			return;
 
@@ -145,12 +202,10 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 		}
 	}
 	
-	private boolean needCallback = false;
-	private int pausePosition;
-	private int stat = MrDefines.MR_MEDIA_IDLE;
-	
 	public int N2J_musicCMD(int cmd, int arg0, int arg1) {
 		int ret = 0;
+		
+		if(recyled) return ret;
 		
 		if(cmd == MR_MEDIA_INIT) {
 			if(mediaPlayer != null){
@@ -264,56 +319,19 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 		return ret;
 	}
 	
-	@Override
-	public boolean onError(MediaPlayer mp, int what, int extra) {
-		EmuLog.e(TAG, String.format("onError(%d,%d)", what, extra));
-		if(needCallback){
-			emulator.native_callback(0x1001, 1); //ACI_PLAY_ERROR       1  //播放时遇到错误
-		}
-		
-		return false;
-	}
 	
-	@Override
-	public void onCompletion(MediaPlayer mp) {
-		EmuLog.i(TAG, "onCompletion");
-		
-		stat = MrDefines.MR_MEDIA_LOADED; //播放完成后的状态
-		if(needCallback){
-			emulator.native_callback(0x1001, 0); //ACI_PLAY_COMPLETE   0  //播放结束
-		}
-	}
-	
-	private Vibrator vibrator;
 
 	public void N2J_startShake(int ms){
-		if(vibrator != null) vibrator.vibrate(ms);
+		if(recyled) return;
+		
+		vibrator.vibrate(ms);
     }
 	
 	public void N2J_stopShake(){
-		if(vibrator != null) vibrator.cancel();
+		if(recyled) return;
+		
+		vibrator.cancel();
 	}
 	
-	//meidia 接口编号区
-	public static final int MR_MEDIA_INIT = 201, 
-		MR_MEDIA_BUF_LOAD = 203, 
-		MR_MEDIA_FILE_LOAD = 202, 
-		MR_MEDIA_PLAY_CUR_REQ = 204, 
-		MR_MEDIA_PAUSE_REQ = 205, 
-		MR_MEDIA_RESUME_REQ = 206,
-		MR_MEDIA_STOP_REQ = 207, 
-		MR_MEDIA_CLOSE = 208, 
-		MR_MEDIA_GET_STATUS = 209, 
-		MR_MEDIA_SETPOS = 210, 
-		MR_MEDIA_GETTIME = 211, 
-		MR_MEDIA_GET_TOTAL_TIME = 212, 
-		MR_MEDIA_GET_CURTIME = 213,
-		MR_MEDIA_GET_CURTIME_MSEC = 215, 
-		MR_MEDIA_FREE = 216, 
-		MR_MEDIA_ALLOC_INRAM = 220, 
-		MR_MEDIA_FREE_INRAM = 221,
-		MR_MEDIA_OPEN_MUTICHANNEL = 222, 
-		MR_MEDIA_PLAY_MUTICHANNEL = 223,
-		MR_MEDIA_STOP_MUTICHANNEL = 224, 
-		MR_MEDIA_CLOSE_MUTICHANNEL = 225;
+	
 }

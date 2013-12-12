@@ -1,4 +1,4 @@
-package com.mrpoid.ui;
+package com.mrpoid.filelist;
 
 import java.io.File;
 import java.util.List;
@@ -21,7 +21,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.mrpoid.R;
-import com.mrpoid.ui.ListViewPathAdapter.OnPathOperateListener;
+import com.mrpoid.filelist.ListViewPathAdapter.OnPathOperateListener;
 import com.yichou.common.utils.FileUtils;
 import com.yichou.common.utils.UIUtils;
 

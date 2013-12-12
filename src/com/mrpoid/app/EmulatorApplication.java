@@ -1,9 +1,9 @@
 package com.mrpoid.app;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
 
-import com.mrpoid.core.EmuStatics;
 import com.mrpoid.core.Emulator;
 import com.mrpoid.core.Prefer;
 import com.yichou.common.sdk.ISdk;
@@ -16,19 +16,23 @@ import com.yichou.common.sdk.SdkUtils;
  * @author Yichou
  *
  */
-public class EmuApplication extends Application {
+public class EmulatorApplication extends Application {
+	static Context gContext;
+	
+	public static Context getContext() {
+		return gContext;
+	}
 	
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		
-		EmuStatics.setAppContext(this);
+		gContext = this;
 		
-		Emulator.getInstance().init(this);
+		Emulator.getInstance().attachApplicationContext(this);
 		
 		// 一定要在模拟器初始化之后
 		Prefer.getInstance().init(this);
-		
 		SdkUtils.getSdk().enableCrashHandle(this);
 		SdkUtils.getSdk().updateOnlineParams(this);
 		SdkUtils.getSdk().setUpdateWifiOnly(false);
