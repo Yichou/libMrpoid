@@ -797,7 +797,7 @@ void emu_requestCallback(int what, int param)
 int emu_sendSms(char *pNumber, char *pContent, int32 flags)
 {
 	if(!pNumber || !pContent)
-		return;
+		return MR_FAILED;
 
 	LOGD("emu_sendSms, msg addr: %s", pNumber);
 

@@ -47,22 +47,17 @@
 
         <!-- mrpoid 所需要的组件 -->
         <service
-            android:name="com.mrpoid.app.EmuService"
+            android:name="com.mrpoid.app.EmulatorService"
             android:exported="false" />
 
         <receiver
-            android:name="com.mrpoid.app.EmuReceiver"
+            android:name="com.mrpoid.app.EmulatorReceiver"
             android:exported="false" >
-            <intent-filter>
-                <action android:name="android.intent.action.USER_PRESENT" />
-                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
-            </intent-filter>
         </receiver>
 
         <activity
             android:name="com.mrpoid.app.EmulatorActivity"
             android:configChanges="orientation|keyboard"
-            android:screenOrientation="portrait"
             android:theme="@style/emu_theme_black_notitle" >
         </activity>
         <activity
@@ -78,12 +73,12 @@
             android:theme="@style/emu_theme_black_notitle" >
         </activity>
         <activity
-            android:name="com.mrpoid.app.EmuPreferenceActivity"
+            android:name="com.mrpoid.app.SettingsActivity"
             android:label="@string/settings"
             android:theme="@style/emu_theme_preference" >
         </activity>
         <activity
-            android:name="com.mrpoid.keysprite.KeySpriteEditorActivity"
+            android:name="com.mrpoid.tools.keysprite.KeySpriteEditorActivity"
             android:label="@string/settings"
             android:theme="@style/emu_theme_light" >
         </activity>
@@ -102,6 +97,72 @@
                 <data android:mimeType="application/mrp" />
             </intent-filter>
         </activity>
+
+        <!-- app0 -->
+        <activity
+            android:name="com.mrpoid.apps.AppActivity0"
+            android:configChanges="orientation|keyboard"
+            android:process=":app0"
+            android:theme="@style/emu_theme_black_notitle" />
+
+        <service
+            android:name="com.mrpoid.apps.AppService0"
+            android:process=":app0" />
+
+        <!-- app1 -->
+        <activity
+            android:name="com.mrpoid.apps.AppActivity1"
+            android:configChanges="orientation|keyboard"
+            android:process=":app1"
+            android:theme="@style/emu_theme_black_notitle" />
+
+        <service
+            android:name="com.mrpoid.apps.AppService1"
+            android:process=":app1" />
+
+        <!-- app2 -->
+        <activity
+            android:name="com.mrpoid.apps.AppActivity2"
+            android:configChanges="orientation|keyboard"
+            android:process=":app2"
+            android:theme="@style/emu_theme_black_notitle" />
+
+        <service
+            android:name="com.mrpoid.apps.AppService2"
+            android:process=":app2" />
+
+        <!-- app3 -->
+        <activity
+            android:name="com.mrpoid.apps.AppActivity3"
+            android:configChanges="orientation|keyboard"
+            android:process=":app3"
+            android:theme="@style/emu_theme_black_notitle" />
+
+        <service
+            android:name="com.mrpoid.apps.AppService3"
+            android:process=":app3" />
+
+        <!-- app4 -->
+        <activity
+            android:name="com.mrpoid.apps.AppActivity4"
+            android:configChanges="orientation|keyboard"
+            android:process=":app4"
+            android:theme="@style/emu_theme_black_notitle" />
+
+        <service
+            android:name="com.mrpoid.apps.AppService4"
+            android:process=":app4" />
+
+        <!-- app5 -->
+        <activity
+            android:name="com.mrpoid.apps.AppActivity5"
+            android:configChanges="orientation|keyboard"
+            android:process=":app5"
+            android:theme="@style/emu_theme_black_notitle" />
+
+        <service
+            android:name="com.mrpoid.apps.AppService5"
+            android:process=":app5" />
 
         <!-- mrpoid 所需要的组件 -->
     </application>

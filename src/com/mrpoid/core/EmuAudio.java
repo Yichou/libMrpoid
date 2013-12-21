@@ -15,7 +15,7 @@ import android.os.Vibrator;
  * <p>优化代码结构 2013-12-13 0:03:33
  *
  */
-public final class EmuAudio implements OnErrorListener, OnCompletionListener {
+public final class EmuAudio implements OnErrorListener, OnCompletionListener, MrDefines {
 	private static final String TAG = "EmuAudio";
 	
 	//meidia 接口编号区
@@ -53,26 +53,6 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	private int stat = MrDefines.MR_MEDIA_IDLE;
 	
 
-	@Override
-	public boolean onError(MediaPlayer mp, int what, int extra) {
-		EmuLog.e(TAG, String.format("onError(%d,%d)", what, extra));
-		if(needCallback){
-			emulator.native_callback(0x1001, 1); //ACI_PLAY_ERROR       1  //播放时遇到错误
-		}
-		
-		return false;
-	}
-	
-	@Override
-	public void onCompletion(MediaPlayer mp) {
-		EmuLog.i(TAG, "onCompletion");
-		
-		stat = MrDefines.MR_MEDIA_LOADED; //播放完成后的状态
-		if(needCallback){
-			emulator.native_callback(0x1001, 0); //ACI_PLAY_COMPLETE   0  //播放结束
-		}
-	}
-	
 	public EmuAudio(Context context, Emulator emulator) {
 		this.emulator = emulator;
 		
@@ -111,7 +91,7 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	public void pause() {
 		if(recyled) return;
 		
-		if(mp3Player != null && !audioPaused){
+		if(mp3Player.isPlaying()) {
 			audioPaused = true;
 			mp3Player.pause();
 		}
@@ -119,15 +99,13 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 		//多媒体接口不暂停
 //		if(mediaPlayer != null)
 //			N2J_musicCMD(MR_MEDIA_PAUSE_REQ, 0, 0);
-		
-		if(vibrator != null)
-			vibrator.cancel();
+		vibrator.cancel();
 	}
 	
 	public void resume() {
 		if(recyled) return;
 		
-		if(mp3Player != null && audioPaused){
+		if(audioPaused) {
 			audioPaused = false;
 			mp3Player.start();
 		}
@@ -140,14 +118,34 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 	public void stop() {
 		if(recyled) return;
 		
-		if(mp3Player != null && mp3Player.isPlaying()){
+		if(mp3Player.isPlaying()) {
 			mp3Player.stop();
 			mp3Player.reset();
 		}
 		
-		if(mediaPlayer != null){
+		if(mediaPlayer != null) {
 			mediaPlayer.release();
 			mediaPlayer = null;
+		}
+	}
+	
+	@Override
+	public boolean onError(MediaPlayer mp, int what, int extra) {
+		EmuLog.e(TAG, String.format("onError(%d, %d)", what, extra));
+		if(needCallback){
+			emulator.native_callback(0x1001, 1); //ACI_PLAY_ERROR       1  //播放时遇到错误
+		}
+		
+		return false;
+	}
+	
+	@Override
+	public void onCompletion(MediaPlayer mp) {
+		EmuLog.i(TAG, "onCompletion");
+		
+		stat = MR_MEDIA_LOADED; //播放完成后的状态
+		if(needCallback){
+			emulator.native_callback(0x1001, 0); //ACI_PLAY_COMPLETE   0  //播放结束
 		}
 	}
 
@@ -250,33 +248,33 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 		}
 		
 		case MR_MEDIA_PAUSE_REQ: {//205
-			if (stat == MrDefines.MR_MEDIA_PLAYING) {
+			if (stat == MR_MEDIA_PLAYING) {
 				pausePosition = mediaPlayer.getCurrentPosition();
 				mediaPlayer.pause();
-				stat = MrDefines.MR_MEDIA_PAUSED;
+				stat = MR_MEDIA_PAUSED;
 			}
 			break;
 		}
 		
 		case MR_MEDIA_RESUME_REQ: {//206
-			if (stat == MrDefines.MR_MEDIA_PAUSED) {
+			if (stat == MR_MEDIA_PAUSED) {
 				mediaPlayer.seekTo(pausePosition);
 				mediaPlayer.start();
-				stat = MrDefines.MR_MEDIA_PLAYING;
+				stat = MR_MEDIA_PLAYING;
 			}
 			break;
 		}
 		
 		case MR_MEDIA_STOP_REQ: {//207
 			mediaPlayer.stop();
-			stat = MrDefines.MR_MEDIA_LOADED;
+			stat = MR_MEDIA_LOADED;
 			break;
 		}
 		
 		case MR_MEDIA_CLOSE: {//208
 			mediaPlayer.stop();
 			mediaPlayer.reset();
-			stat = MrDefines.MR_MEDIA_IDLE;
+			stat = MR_MEDIA_IDLE;
 			break;
 		}
 
@@ -301,7 +299,7 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 		case MR_MEDIA_FREE: {//216
 			mediaPlayer.release();
 			mediaPlayer = null;
-			stat = MrDefines.MR_MEDIA_NULL;
+			stat = MR_MEDIA_NULL;
 			break;
 		}
 
@@ -318,8 +316,6 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 
 		return ret;
 	}
-	
-	
 
 	public void N2J_startShake(int ms){
 		if(recyled) return;
@@ -332,6 +328,4 @@ public final class EmuAudio implements OnErrorListener, OnCompletionListener {
 		
 		vibrator.cancel();
 	}
-	
-	
 }

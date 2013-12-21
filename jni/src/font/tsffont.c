@@ -601,7 +601,8 @@ int32 tsf_textWidthHeight(uint8 *pcText, int32 *width, int32 *height)
 
 //初始化字库
 int32 tsf_init(){
-	if(enable) return; //已经加载过
+	if(enable)
+		return MR_FAILED; //已经加载过
 
 	enable = 0;	//可用标志为0
 
@@ -614,7 +615,7 @@ int32 tsf_init(){
 		LOGE("N2J_readTsfFont error!");
 		//强制使用系统字体
 		gEmulatorCfg.b_tsfInited = FALSE;
-		return;
+		return MR_FAILED;
 	}
 
 	gEmulatorCfg.b_tsfInited = TRUE;

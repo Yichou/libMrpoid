@@ -41,6 +41,7 @@ import android.widget.Toast;
 import com.mrpoid.R;
 import com.mrpoid.app.EmulatorActivity;
 import com.mrpoid.app.EmulatorSurface;
+import com.mrpoid.gui.keypad.Keypad;
 import com.mrpoid.utils.SmsUtil;
 import com.yichou.common.utils.FileUtils;
 
@@ -195,6 +196,9 @@ public class Emulator implements Callback {
 	 * @param runMrpPath
 	 */
 	public void setRunMrp(String path) {
+		if(path == null)
+			throw new RuntimeException("path can't be null!");
+		
 		System.out.println("inputPah=" + path);
 		
 		//1.是不是绝对路径
@@ -209,7 +213,7 @@ public class Emulator implements Callback {
 				final int j = path.lastIndexOf(File.separatorChar);
 				final String vpath = path.substring(j+1);
 
-				File dstFile = getFullFilePath(vpath);
+				File dstFile = getVmFullFilePath(vpath);
 				
 				System.out.println("复制文件： " + path + " to " + dstFile);
 				
@@ -231,7 +235,7 @@ public class Emulator implements Callback {
 	}
 
 	public String getCurMrpAppName() {
-		return native_getAppName(getFullPath() + runMrpPath);
+		return native_getAppName(getVmFullPath() + runMrpPath);
 	}
 	
 	public boolean isRunning() {
@@ -240,8 +244,6 @@ public class Emulator implements Callback {
 	
 	@Override
 	public boolean handleMessage(Message msg) {
-//		EmuLog.i(TAG, "emu handle message: " + msg.what);
-		
 		switch (msg.what) {
 		case MSG_TIMER_OUT:
 			vm_timeOut();
@@ -683,7 +685,7 @@ public class Emulator implements Callback {
 	 * 
 	 * @return 绝对路径 /结尾
 	 */
-	public String getDefFullPath() {
+	public String getVmDefaultFullPath() {
 		return (SDCARD_ROOT + DEF_WORK_PATH);
 	}
 	
@@ -692,7 +694,7 @@ public class Emulator implements Callback {
 	 * 
 	 * @return 绝对路径 /结尾
 	 */
-	public String getFullPath() {
+	public String getVmFullPath() {
 		return (mVmRoot + mWorkPath);
 	}
 	
@@ -701,7 +703,7 @@ public class Emulator implements Callback {
 	 * 
 	 * @return 绝对路径 /结尾
 	 */
-	public String getLastFullPath() {
+	public String getVmLastFullPath() {
 		return (mLastVmRoot + mLastWorkPath);
 	}
 	
@@ -712,7 +714,7 @@ public class Emulator implements Callback {
 	 * 
 	 * @return
 	 */
-	public File getFullFilePath(String name) {
+	public File getVmFullFilePath(String name) {
 		return new File(mVmRoot + mWorkPath, name);
 	}
 	
@@ -813,27 +815,6 @@ public class Emulator implements Callback {
 		return mWorkPath;
 	}
 	
-	//-----------------------------------------------------------
-
-	/**
-	 * 启动虚拟机并运行 mrp
-	 * 
-	 * @param context
-	 * @param mrpPath 要运行的 mrp 路径，相对于 mythroad
-	 * @param mrpFile MrpFile 实例
-	 */
-	public static void startMrp(Context context, String mrpPath) {
-		EmuLog.i(TAG, "startMrp(" + mrpPath + ")");
-		
-		instance.attachApplicationContext(context);
-		instance.setRunMrp(mrpPath);;
-		
-		Intent intent = new Intent(context, EmulatorActivity.class);
-		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		context.startActivity(intent);
-	}
-
-
 	/// ////////////////////////////////////////
 	public native void native_create(MrpScreen mrpScreen, EmuAudio emuAudio);
 	public native void native_pause();

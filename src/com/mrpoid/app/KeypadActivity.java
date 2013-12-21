@@ -41,14 +41,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mrpoid.R;
-import com.mrpoid.core.Keypad;
 import com.mrpoid.core.MrDefines;
-import com.mrpoid.gui.Actor;
-import com.mrpoid.gui.ActorGroup;
-import com.mrpoid.gui.Director;
-import com.mrpoid.gui.DragTextButton;
-import com.mrpoid.gui.Position;
-import com.mrpoid.gui.TextButton;
+import com.mrpoid.gui.engine.Actor;
+import com.mrpoid.gui.engine.ActorGroup;
+import com.mrpoid.gui.engine.Director;
+import com.mrpoid.gui.engine.DragTextButton;
+import com.mrpoid.gui.engine.Position;
+import com.mrpoid.gui.engine.TextButton;
+import com.mrpoid.gui.keypad.Keypad;
 
 /**
  * 虚拟键盘编辑

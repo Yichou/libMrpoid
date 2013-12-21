@@ -1,13 +1,26 @@
+/*
+ * Copyright (C) 2013 The Mrpoid Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.mrpoid.app;
 
-import java.io.File;
 import java.util.List;
 import java.util.Locale;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -45,18 +58,18 @@ import com.mrpoid.R;
 import com.mrpoid.core.EmuLog;
 import com.mrpoid.core.EmuUtils;
 import com.mrpoid.core.Emulator;
-import com.mrpoid.core.Keypad;
-import com.mrpoid.core.Keypad.OnKeyEventListener;
-import com.mrpoid.core.KeypadView;
 import com.mrpoid.core.MrDefines;
+import com.mrpoid.core.MrpRunner;
 import com.mrpoid.core.MrpScreen;
-import com.mrpoid.core.PluginProxy;
 import com.mrpoid.core.Prefer;
-import com.mrpoid.keysprite.ChooserFragment;
-import com.mrpoid.keysprite.KeyEventListener;
-import com.mrpoid.keysprite.KeySprite;
-import com.mrpoid.keysprite.OnChooseLitener;
-import com.mrpoid.keysprite.Sprite;
+import com.mrpoid.gui.keypad.Keypad;
+import com.mrpoid.gui.keypad.KeypadView;
+import com.mrpoid.gui.keypad.Keypad.OnKeyEventListener;
+import com.mrpoid.tools.keysprite.ChooserFragment;
+import com.mrpoid.tools.keysprite.KeyEventListener;
+import com.mrpoid.tools.keysprite.KeySprite;
+import com.mrpoid.tools.keysprite.OnChooseLitener;
+import com.mrpoid.tools.keysprite.Sprite;
 import com.yichou.common.sdk.SdkUtils;
 
 /**
@@ -71,27 +84,26 @@ public class EmulatorActivity extends FragmentActivity implements
 		OnClickListener{
 	static final String TAG = "EmulatorActivity";
 	
-	static final String ACTION_SMS_SENT = "com.mrpoid.SMS_SENT_ACTION";
+	public static final String ACTION_SMS_SENT = "com.mrpoid.SMS_SENT_ACTION";
 	
-	static final int MSG_ID_SHOWEDIT = 1001,
-		MSG_ID_UPDATE = 1002,
-		MSG_ID_KEY_DOWN = 1012,
-		MSG_ID_KEY_UP = 1003,
-		MSG_ID_UPDATE_INFO_TEXT = 1004,
-		
-		MSG_ID_MAX = 1100;
+	public static String APP_ACTIVITY_NAME = "com.mrpoid.apps.AppActivity0";
+	public static String APP_SERVICE_NAME = "com.mrpoid.apps.AppService0";
 	
-	static final int INFO_TYPE_KEY_SPRITE = 1001;
 	
-	static final int REQ_SHOWEDIT = 1001,
-		REQ_GET_IMAGE = 1002;
+//	private static final int MSG_ID_SHOWEDIT = 1001;
+	private static final int MSG_ID_UPDATE = 1002;
+	private static final int	MSG_ID_KEY_DOWN = 1012;
+	private static final int	MSG_ID_KEY_UP = 1003;
+	private static final int	MSG_ID_UPDATE_INFO_TEXT = 1004;
 	
-	static final int DLG_EDIT = 1001, 
-		DLG_SCALE_MODE = 1002,
-		DLG_PAD_ALPHA = 1003,
-		DLG_TOOLS = 1004,
-		
-		DLG_LAST = 1103;
+	private static final int INFO_TYPE_KEY_SPRITE = 1001;
+	private static final int REQ_SHOWEDIT = 1001;
+	private static final int	REQ_GET_IMAGE = 1002;
+	
+	private static final int DLG_EDIT = 1001; 
+	private static final int	DLG_SCALE_MODE = 1002;
+	private static final int	DLG_PAD_ALPHA = 1003;
+	private static final int	DLG_TOOLS = 1004;
 	
 	
 	private TextView tvMemory, tvInfo;
@@ -161,26 +173,24 @@ public class EmulatorActivity extends FragmentActivity implements
 		super.onCreate(savedInstanceState);
 		
 		getWindow().requestFeature(Window.FEATURE_NO_TITLE);//去掉标题栏
+		
 		if(!Prefer.showStatusBar)
 			getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		
 		setContentView(R.layout.activity_emulator);
-
-//		final WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
-//		final Drawable wallpaperDrawable = wallpaperManager.getDrawable();
 		
 		handler = new Handler(this);
 		inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		vibrator = (Vibrator)getSystemService(Context.VIBRATOR_SERVICE);
 		
 		emulator = Emulator.getInstance();
+		emulator.setRunMrp(getIntent().getStringExtra(MrpRunner.INTENT_KEY_PATH));;
 		emulator.attachActivity(this);
 		
 		emulatorView = new EmulatorSurface(this);
 		emulatorView.setBackgroundColor(Color.TRANSPARENT);
 		continer =  (ViewGroup) findViewById(R.id.contener);
 		continer.addView(emulatorView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-//		continer.setBackground(wallpaperDrawable);
 		
 		//虚拟键盘
 		Keypad.loadBmp(getResources());
@@ -209,8 +219,6 @@ public class EmulatorActivity extends FragmentActivity implements
 			tvInfo.setPadding(padding, padding, padding, padding);
 			continer.addView(tvInfo, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
 		}
-		
-		PluginProxy.onCreate(this);
 	}
 	
 	@Override
@@ -229,8 +237,6 @@ public class EmulatorActivity extends FragmentActivity implements
 			Keypad.getInstance().setOnKeyEventListener(null);
 		}
 		
-		PluginProxy.onPause(this);
-
 		super.onPause();
 	}
 	
@@ -243,10 +249,9 @@ public class EmulatorActivity extends FragmentActivity implements
 		SdkUtils.getSdk().onResume(this);
 		emulator.resume();
 		mSmsReceiver.register();
+		
 		if(Prefer.showMemInfo)
 			handler.sendEmptyMessageDelayed(MSG_ID_UPDATE, 1000);
-		
-		PluginProxy.onResume(this);
 		
 		super.onResume();
 	}
@@ -255,15 +260,15 @@ public class EmulatorActivity extends FragmentActivity implements
 	protected void onDestroy() {
 		EmuLog.i(TAG, "onDestroy");
 		
-		if(emulator.isRunning()){ //说明在后台运行被杀了
+		if(emulator.isRunning()) { //说明在后台运行被杀了
 			EmuLog.e(TAG, "后台运行被杀！");
 			SdkUtils.getSdk().sendEvent(this, "beKilled", "");
 		}
 
 		Keypad.releaseBmp();
-		unregisterReceiver(mReceiver);
+		unregisterReceiver(mSmsRetReceiver);
 		
-		PluginProxy.onDestory(this);
+		emulatorView.onActivityDestroy();
 		
 		super.onDestroy(); 
 	}
@@ -308,9 +313,6 @@ public class EmulatorActivity extends FragmentActivity implements
 			String curMrpPath = savedInstanceState.getString("curMrpPath");
 			if(curMrpPath != null){
 				EmuLog.i(TAG, "异常恢复成功");
-				
-				File path = Emulator.getInstance().getFullFilePath(curMrpPath);
-				
 				Emulator.getInstance().setRunMrp(curMrpPath);
 			} else {
 				finish();
@@ -323,7 +325,8 @@ public class EmulatorActivity extends FragmentActivity implements
 	}
 	
 	//-----------------------------------------------------------------
-	final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+	private final BroadcastReceiver mSmsRetReceiver = new BroadcastReceiver() {
+		
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			String message = null;
@@ -354,7 +357,6 @@ public class EmulatorActivity extends FragmentActivity implements
 			
 			//通知底层结果
 			emulator.vm_event(MrDefines.MR_SMS_RESULT, error? MrDefines.MR_FAILED : MrDefines.MR_SUCCESS, 0);
-			
 			Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
 		}
 	};
@@ -363,7 +365,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		mSmsReceiver = new SmsReceiver(this);
 		
 		// Register broadcast receivers for SMS sent and delivered intents
-		registerReceiver(mReceiver, new IntentFilter(ACTION_SMS_SENT));
+		registerReceiver(mSmsRetReceiver, new IntentFilter(ACTION_SMS_SENT));
 	}
 	
 	private void showMenInfo() {
@@ -400,6 +402,20 @@ public class EmulatorActivity extends FragmentActivity implements
 		return handler;
 	}
 	
+	private void backgroundRun() {
+		String entryActivity = getIntent().getStringExtra(MrpRunner.INTENT_KEY_ENTRY_ACTIVITY);
+
+		Intent intent = new Intent();
+		intent.setClassName(this, entryActivity);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+				| Intent.FLAG_ACTIVITY_SINGLE_TOP
+				| Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+		intent.addCategory(Intent.CATEGORY_LAUNCHER);
+		intent.setAction(Intent.ACTION_MAIN);
+		
+		startActivity(intent);
+	}
+	
 	@SuppressWarnings("deprecation")
 	@Override
 	public boolean onMenuItemSelected(int featureId, android.view.MenuItem item) {
@@ -408,8 +424,8 @@ public class EmulatorActivity extends FragmentActivity implements
 			finish();
 		} else if (item.getItemId() == R.id.mi_scnshot) {
 			emulator.getScreen().screenShot(this);
-		} else if (item.getItemId() == R.id.mi_foce_close) {
-			emulator.stopFoce();
+		} else if (item.getItemId() == R.id.mi_entry_background) {
+			backgroundRun();
 		} else if (item.getItemId() == R.id.mi_switch_keypad) {
 			padView.switchKeypad();
 		} else if (item.getItemId() == R.id.mi_image) {
@@ -439,7 +455,7 @@ public class EmulatorActivity extends FragmentActivity implements
 		
 		int i = 0;
 		menu.add(0, R.id.mi_close, i++, R.string.close);
-		menu.add(0, R.id.mi_foce_close, i++, R.string.foce_close);
+		menu.add(0, R.id.mi_entry_background, i++, R.string.entry_background);
 		menu.add(0, R.id.mi_scnshot, i++, R.string.scnshot);
 		menu.add(0, R.id.mi_switch_keypad, i++, R.string.switch_keypad);
 		menu.add(0, R.id.mi_keypad_opacity, i++, R.string.pad_opacity);
@@ -679,17 +695,20 @@ public class EmulatorActivity extends FragmentActivity implements
 		}
 	}
 	
+	public void startAppService(String action) {
+		startService(new Intent(action).setClassName(this, APP_SERVICE_NAME));
+	}
+	
 	private void entryBackground() {
-		startService(new Intent(this, EmuService.class).setAction(EmuService.ACTION_FOREGROUND));
-		SdkUtils.getSdk().sendEvent(this, "backrun", EmuUtils.getTimeNow());
+		startAppService(EmulatorService.ACTION_FOREGROUND);
+		
+		SdkUtils.getSdk().sendEvent(this, "foreground", EmuUtils.getTimeNow());
 	}
 	
 	private void backFroground() {
-		stopService(new Intent(this, EmuService.class));
+		startAppService(EmulatorService.ACTION_BACKGROUND);
 		
-		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		manager.cancel(1001);
-		SdkUtils.getSdk().sendEvent(this, "fgrun", EmuUtils.getTimeNow());
+		SdkUtils.getSdk().sendEvent(this, "background", EmuUtils.getTimeNow());
 	}
 	
 	@Override
@@ -755,6 +774,7 @@ public class EmulatorActivity extends FragmentActivity implements
 					+ "地址：" + addr + "\n"
 					+ "内容：" + text + "\n")
 			.setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {
+				
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					SmsManager sms = SmsManager.getDefault();
@@ -767,15 +787,23 @@ public class EmulatorActivity extends FragmentActivity implements
 				}
 			})
 			.setNegativeButton(R.string.refused, new DialogInterface.OnClickListener() {
+				
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					//直接通知底层失败
 	                emulator.vm_event(MrDefines.MR_SMS_RESULT, MrDefines.MR_FAILED, 0);
 				}
 			})
+			.setOnCancelListener(new DialogInterface.OnCancelListener() {
+				
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					emulator.vm_event(MrDefines.MR_SMS_RESULT,  MrDefines.MR_SUCCESS, 0);
+				}
+			})
 			.create();
 		dialog.setCancelable(false);
-		dialog.setCanceledOnTouchOutside(false);
+//		dialog.setCanceledOnTouchOutside(false);
 		dialog.show();
 	}
 	
