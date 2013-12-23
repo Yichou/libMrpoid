@@ -25,6 +25,7 @@ import java.util.Set;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
+import android.graphics.Paint.Style;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -138,42 +139,65 @@ public class MrpScreen {
 		}
 	}
 	
+	Rect testRect = new Rect();
+	Paint testPaint = new Paint();
+	
+	{
+		testPaint.setStyle(Style.STROKE);
+	}
+	
 //	private int lastY = 0, buttom = 0;
 	public void N2J_drawChar(short c, int x, int y, int color) {
 		tmpBuf[0] = (char) c; 
 		tmpBuf[1] = 0;
+		
+		System.out.println("" + tmpBuf[0] + " " + x + "," + y);
+
 		paint.setColor(color);
+		paint.getTextBounds(tmpBuf, 0, 1, testRect);
+		
+		{
+			testPaint.setAlpha(0xff);
+			testPaint.setColor(Color.RED);
+			cacheCanvas.drawLine(x, y, x+textRect.width(), y, testPaint);
+			cacheCanvas.drawLine(x, y, x, y+textRect.height(), testPaint);
+		}
 		
 		//顶、左 对齐 +charH-2
-		cacheCanvas.drawText(tmpBuf, 0,1, x, y+CHR_H-2, paint);
-		
-//		paint.getTextBounds(tmpBuf, 0, 1, textRect);
-//		if(lastY != y){ //新的一行
-//			lastY = y;
-//			buttom = y;
-//		}
-		
-//		int tmp = 0;
-		
-//		if(c >= 33 && c <= 126){ //ascii可见字符
-//			tmp = y - textRectD.top + textRect.top;
-//		}else {
-//			tmp = y - textRect.top;
-//		}
-		
-		//顶、左 对齐 +charH-2
-//		cacheCanvas.drawText(tmpBuf, 0,1, x+textRect.left, tmp, paint);
+		x += -testRect.left;
+		y += -textRect.top;
+		cacheCanvas.drawText(tmpBuf, 0,1, x, y, paint);
+
+		{
+			testRect.offset((int)x, (int)y);
+			
+			testPaint.setColor(Color.BLUE);
+			testPaint.setAlpha(0x80);
+			
+			cacheCanvas.drawRect(testRect, testPaint);
+		}
 	}
+	
+	StringBuilder sb = new StringBuilder(256);
 	
 	public void N2J_measureChar(short ch) {
 		tmpBuf[0] = (char)ch;
 		tmpBuf[1] = 0;
 		
-		emulator.N2J_charW = (int)Math.ceil(paint.measureText(tmpBuf, 0, 1));
+//		sb.append(tmpBuf[0]);
+//		if(sb.length() > 200) {
+//			System.out.println(sb.toString());
+//			sb = new StringBuilder(256);
+//		}
+
 		paint.getTextBounds(tmpBuf, 0, 1, textRect);
+		
+		emulator.N2J_charW = textRect.width();//(int)Math.ceil(paint.measureText(tmpBuf, 0, 1));
 		emulator.N2J_charH = textRect.height();
-		if(emulator.N2J_charH > CHR_H)
-			CHR_H = emulator.N2J_charH;
+		
+//		if(emulator.N2J_charH > CHR_H)
+//			CHR_H = emulator.N2J_charH;
+		
 //		Log.i("---", "measure" + String.valueOf(tmpBuf));
 	}
 	

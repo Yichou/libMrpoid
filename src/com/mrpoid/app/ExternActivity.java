@@ -70,7 +70,7 @@ public class ExternActivity extends Activity {
 		i = str.indexOf(File.separator);
 		str = str.substring(i + 1);
 
-		MrpRunner.startMrp(this, str);
+		MrpRunner.runMrp(this, str);
 	}
 
 	@Override

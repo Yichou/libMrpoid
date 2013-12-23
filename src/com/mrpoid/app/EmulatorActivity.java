@@ -168,12 +168,19 @@ public class EmulatorActivity extends FragmentActivity implements
 	}
 	
 	@Override
+	protected void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+
+		EmuLog.i(TAG, "onNewIntent " + intent);
+	}
+	
+	@Override
 	public void onCreate(Bundle savedInstanceState) {
-		EmuLog.i(TAG, "onCreate");
 		super.onCreate(savedInstanceState);
 		
+		EmuLog.i(TAG, "onCreate");
+
 		getWindow().requestFeature(Window.FEATURE_NO_TITLE);//去掉标题栏
-		
 		if(!Prefer.showStatusBar)
 			getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		

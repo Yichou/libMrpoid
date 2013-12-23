@@ -45,7 +45,6 @@ public class EmulatorApplication extends Application {
 		System.out.println(context.getApplicationInfo().processName);
 		
 		gContext = context.getApplicationContext();
-		
 		Emulator.getInstance().attachApplicationContext(gContext);
 		
 		// 一定要在模拟器初始化之后

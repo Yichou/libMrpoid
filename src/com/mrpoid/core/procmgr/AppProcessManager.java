@@ -68,16 +68,6 @@ public class AppProcessManager {
 			mProcList[i] = new Item();
 	}
 	
-	private void resetItem(int index) {
-		synchronized (mProcList) {
-			if(mProcList[index].conn != null) {
-				mContext.unbindService(mProcList[index].conn);
-			}
-			
-			mProcList[index].reset();
-		}
-	}
-	
 	private void markAsWaiting(int index, String mark, ServiceConnection c) {
 		synchronized (mProcList) {
 			mProcList[index].conn = c;
@@ -104,7 +94,6 @@ public class AppProcessManager {
 		synchronized (mProcList) {
 			if(mProcList[procIndex].state == ItemState.RUNNING) { //被人抢先了一步，你回去吧
 				log.e("proc " + procIndex + " has Preemptived by" + mProcList[procIndex].toString());
-//				killProc(procIndex);
 				return false;
 			}
 			
@@ -117,6 +106,7 @@ public class AppProcessManager {
 		return true;
 	}
 	
+	
 	private void unbindProc(int procIndex) {
 		synchronized (mProcList) {
 			if (mProcList[procIndex].conn != null) {
@@ -127,14 +117,24 @@ public class AppProcessManager {
 			}
 		}
 	}
+	
+	private void resetProc(int procIndex) {
+		synchronized (mProcList) {
+			unbindProc(procIndex);
+			mProcList[procIndex].reset();
+		}
+	}
 
 	private void exitProc(int procIndex) {
 		synchronized (mProcList) {
 			unbindProc(procIndex);
 			
-			mProcList[procIndex].app.exit(false);
+			if(mProcList[procIndex].app != null) {
+				mProcList[procIndex].app.exit(false);
+				mProcList[procIndex].app = null;
+			}
 			
-			resetItem(procIndex);
+			mProcList[procIndex].reset();
 			
 			log.i("proc" + procIndex + " exited!");
 		}
@@ -143,12 +143,13 @@ public class AppProcessManager {
 	private void killProc(int procIndex) {
 		synchronized (mProcList) {
 			unbindProc(procIndex);
-			
-//			if(mProcList[procIndex].app != null)
-//				mProcList[procIndex].app.killSelf();
-			mProcList[procIndex].app.exit(true);
 
-			resetItem(procIndex);
+			if(mProcList[procIndex].app != null) {
+				mProcList[procIndex].app.exit(true);
+				mProcList[procIndex].app = null;
+			}
+
+			mProcList[procIndex].reset();
 
 			log.i("proc" + procIndex + " killed!");
 		}
@@ -158,24 +159,29 @@ public class AppProcessManager {
 		return mContext;
 	}
 	
-	/**
-	 * 从正在运行列表取
-	 * 
-	 * @param mark
-	 * @return
-	 */
-	private int checkRuning(String mark) {
+	private int getIdleIndex(int defProcIndex, boolean foce) {
 		synchronized (mProcList) {
-			for (int i = 0; i < MAX_PROC_COUNT; i++)
-				if (mark.equals(mProcList[i].mark))
-					return i;
-		}
-		
-		return -1;
-	}
-	
-	private int getIdleIndex() {
-		synchronized (mProcList) {
+			/**
+			 * if procIndex specified we shoud check if we can!
+			 */
+			if(defProcIndex != -1) {
+				if(mProcList[defProcIndex].state == ItemState.IDLE) {
+					return defProcIndex;
+				}
+				else if(mProcList[defProcIndex].state == ItemState.WAITING && foce) {
+					log.w("foce exit waiting proc" + defProcIndex);
+					resetProc(defProcIndex);
+					
+					return defProcIndex;
+				}
+				else if (mProcList[defProcIndex].state == ItemState.RUNNING && foce) {
+					log.w("foce exit waiting proc" + defProcIndex);
+					exitProc(defProcIndex);
+					
+					return defProcIndex;
+				}
+			}
+			
 			for (int i = 0; i < MAX_PROC_COUNT; i++) {
 				if (mProcList[i].state == ItemState.IDLE)
 					return i;
@@ -185,7 +191,6 @@ public class AppProcessManager {
 			for (int i = 0; i < MAX_PROC_COUNT; i++) {
 				if (mProcList[i].state == ItemState.WAITING) {
 					mProcList[i].reset();
-					
 					log.w("use ready proc" + i);
 					return i;
 				}
@@ -206,7 +211,6 @@ public class AppProcessManager {
 			if (id != -1) {
 				log.w("exit running proc" + id);
 				exitProc(id);
-//				killProc(id);
 				return id;
 			}
 		}
@@ -214,8 +218,25 @@ public class AppProcessManager {
 		return -1;
 	}
 	
+	/**
+	 * 从正在运行列表取
+	 * 
+	 * @param mark
+	 * @return
+	 */
+	private int checkRuning(String mark) {
+		synchronized (mProcList) {
+			for (int i = 0; i < MAX_PROC_COUNT; i++)
+				if (mark.equals(mProcList[i].mark))
+					return i;
+		}
+		
+		return -1;
+	}
+	
 	public static interface RequestCallback {
-		public void onSuccess(int procIndex, AppProcess process);
+		public void onSuccess(int procIndex, AppProcess process, boolean alreadyRun);
+		
 		public void onFailure(String msg);
 	}
 
@@ -237,7 +258,7 @@ public class AppProcessManager {
 			AppProcess process = new AppProcess(AppProcessManager.this, procIndex, service);
 			markAsConnected(procIndex, process);
 
-			callback.onSuccess(procIndex, process);
+			callback.onSuccess(procIndex, process, false);
 		}
 
 		/**
@@ -248,7 +269,7 @@ public class AppProcessManager {
 			log.d("proc" + procIndex + " onServiceDisconnected!");
 
 			unbindProc(procIndex);
-			resetItem(procIndex);
+			resetProc(procIndex);
 		}
 	}
 	
@@ -260,30 +281,33 @@ public class AppProcessManager {
 	 * 
 	 * @return apk 运行 id
 	 */
-	public synchronized void requestIdleProcess(String mark, RequestCallback cb) {
+	public synchronized void requestIdleProcess(int defProcIndex, boolean foce, String mark, RequestCallback cb) {
 		int procIndex = checkRuning(mark);
 		
+		/**
+		 * if is already running we dont't case defProcIndex
+		 */
 		if(procIndex != -1) { //is running
 			if(mProcList[procIndex].state == ItemState.RUNNING) {
 				mProcList[procIndex].app.resume();
-				cb.onSuccess(procIndex, mProcList[procIndex].app);
+				cb.onSuccess(procIndex, mProcList[procIndex].app, true);
 				
 				return ; //直接返回 running proc
 			} 
-			else if(mProcList[procIndex].state == ItemState.WAITING) { //怎么还在 ready ?
-				if(System.currentTimeMillis() - mProcList[procIndex].readyTime > 1*1000) { //you have ready 1 minute!
-					resetItem(procIndex);
+			else if(mProcList[procIndex].state == ItemState.WAITING) { //怎么还在 waiting ?
+				if(System.currentTimeMillis() - mProcList[procIndex].readyTime > 10*1000) { //wait most 10 seconds
+					resetProc(procIndex);
 				} else {
 					procIndex = -1; //开一个新的
 				}
 			} 
 			else if(mProcList[procIndex].state == ItemState.IDLE) {
-				resetItem(procIndex);
+				resetProc(procIndex);
 			}
 		} 
 		
 		if(procIndex == -1) {
-			procIndex = getIdleIndex();
+			procIndex = getIdleIndex(defProcIndex, foce);
 			
 			if(procIndex == -1) {
 				final String MSG = "no idle process now!";
